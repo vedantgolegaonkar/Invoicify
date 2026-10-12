@@ -73,7 +73,7 @@ We reserve the right to suspend or terminate access to the Service at our sole d
 
 ## 10. Governing Law and Dispute Resolution
 
-These Terms shall be governed by and construed in accordance with the laws of **India**, without regard to its conflict of law provisions. Any disputes arising in connection with these Terms shall be subject to the exclusive jurisdiction of the competent courts in **Pune, Maharashtra, India**.
+These Terms shall be governed by and construed in accordance with the laws of **India**, without regard to its conflict of law provisions. Any disputes arising in connection with these Terms shall be subject to the exclusive jurisdiction of the competent courts in **Chh. Sambhaji Nagar, Maharashtra, India**.
 
 ---
 
@@ -88,5 +88,5 @@ We reserve the right to modify or replace these Terms at any time. Notice of sig
 For any inquiries or legal notices regarding these Terms, please contact:
 
 * **Entity:** Herambh Software Technologies and Solutions
-* **Email:** legal@herambh.com / support@herambh.com
-* **Address:** Pune, Maharashtra, India
+* **Email:** herambh.info@gmail.com
+* **Address:** Chh. Sambhaji Nagar, Maharashtra, India

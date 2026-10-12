@@ -72,7 +72,7 @@ We implement strict administrative and technical safeguards to protect your reco
 ## 6. Data Retention and Account/Data Deletion
 
 * **In-App Management:** You have full control over your data. You can edit or delete products, customers, and invoice records at any time directly within the app.
-* **Complete Account & Data Deletion:** If you wish to permanently delete your account and all associated cloud records, you may request deletion by emailing us at **support@herambh.com**. Upon verification, all records will be deleted from our active databases within 30 days.
+* **Complete Account & Data Deletion:** If you wish to permanently delete your account and all associated cloud records, you may request deletion by emailing us at **herambh.info@gmail.com**. Upon verification, all records will be deleted from our active databases within 30 days.
 
 ---
 
@@ -93,5 +93,5 @@ We may update this Privacy Policy from time to time. Any updates will be posted 
 If you have any questions, concerns, or requests regarding this Privacy Policy or your data, please contact:
 
 * **Company:** Herambh Software Technologies and Solutions
-* **Email:** support@herambh.com
-* **Website:** https://herambh.com
+* **Email:** herambh.info@gmail.com
+<!-- * **Website:** https://herambh-tech.vercel.app/ -->
