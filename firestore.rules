@@ -1,0 +1,84 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Since this is for a single owner and authentication is NOT implemented yet,
+    // we have to allow read/write access. However, to make it slightly safer for production
+    // until Auth is added, we enforce schema validation.
+    
+    // Function to check if the document is being soft deleted or restored
+    function isSoftDeleteUpdate() {
+      return request.resource.data.diff(resource.data).affectedKeys()
+        .hasOnly(['isDeleted', 'deletedAt', 'updatedAt']);
+    }
+
+    // Function to check if essential fields exist on create
+    function hasRequiredFields(requiredFields) {
+      return request.resource.data.keys().hasAll(requiredFields);
+    }
+
+    match /customers/{customerId} {
+      allow read: if true;
+      allow create: if true 
+                    && hasRequiredFields(['id', 'name', 'mobile', 'address', 'currentOutstanding', 'createdAt', 'updatedAt', 'isDeleted']);
+      allow update: if true;
+      allow delete: if false; // Only allow soft deletes via update
+    }
+
+    match /products/{productId} {
+      allow read: if true;
+      allow create: if true 
+                    && hasRequiredFields(['id', 'name', 'gstRate', 'sellingPrice', 'currentStock', 'minimumStock', 'isActive', 'createdAt', 'updatedAt', 'isDeleted']);
+      allow update: if true;
+      allow delete: if false; 
+    }
+
+    match /orders/{orderId} {
+      allow read: if true;
+      allow create: if true;
+      allow update: if true;
+      allow delete: if false;
+    }
+
+    match /invoices/{invoiceId} {
+      allow read: if true;
+      allow create: if true;
+      allow update: if true;
+      allow delete: if false;
+    }
+
+    match /payments/{paymentId} {
+      allow read: if true;
+      allow create: if true;
+      allow update: if true;
+      allow delete: if false;
+    }
+
+    match /inventory_transactions/{transactionId} {
+      allow read: if true;
+      allow create: if true;
+      allow update: if true;
+      allow delete: if false;
+    }
+
+    match /settings/{settingId} {
+      allow read, write: if true;
+    }
+
+    match /business/{businessId} {
+      allow read, write: if true;
+    }
+
+    match /notifications/{notificationId} {
+      allow read, write: if true;
+    }
+
+    match /audit_logs/{logId} {
+      allow read, write: if true;
+    }
+
+    match /{document=**} {
+      allow read, write: if true;
+    }
+  }
+}

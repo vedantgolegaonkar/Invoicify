@@ -1,0 +1,28 @@
+{
+  "flutter": {
+    "platforms": {
+      "android": {
+        "default": {
+          "projectId": "mayuresh-gruh-udyog",
+          "appId": "1:529799990280:android:a69a3c91f0533d123295bd",
+          "fileOutput": "android/app/google-services.json"
+        }
+      },
+      "dart": {
+        "lib/firebase_options.dart": {
+          "projectId": "mayuresh-gruh-udyog",
+          "configurations": {
+            "android": "1:529799990280:android:a69a3c91f0533d123295bd",
+            "web": "1:529799990280:web:eb639d739c328ca63295bd"
+          }
+        }
+      }
+    }
+  },
+  "database": {
+    "rules": "database.rules.json"
+  },
+  "firestore": {
+    "rules": "firestore.rules"
+  }
+}

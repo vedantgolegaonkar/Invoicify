@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "529799990280",
+    "project_id": "mayuresh-gruh-udyog",
+    "storage_bucket": "mayuresh-gruh-udyog.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:529799990280:android:a69a3c91f0533d123295bd",
+        "android_client_info": {
+          "package_name": "com.herambh.invoicify"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCdW3PK3e5XjHhyjfxJjdNEfjv0YrLyli0"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
