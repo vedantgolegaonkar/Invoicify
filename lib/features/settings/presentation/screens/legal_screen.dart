@@ -200,7 +200,7 @@ Widget _buildContactBox() {
         ),
         SizedBox(height: 6),
         Text(
-          'Herambh Software Technologies and Solutions\nPune, Maharashtra, India\nSupport: support@herambh.com',
+          'Herambh Software Technologies and Solutions\nChh. Sambhaji Nagar, Maharashtra, India\nSupport: herambh.info@gmail.com',
           style: TextStyle(fontSize: 12, color: AppColors.textSecondary, height: 1.4),
         ),
       ],
