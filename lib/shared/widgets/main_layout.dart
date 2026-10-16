@@ -47,8 +47,8 @@ class MainLayout extends ConsumerWidget {
       ),
       _NavItemData(
         label: 'More',
-        selectedIcon: Icons.grid_view_rounded,
-        unselectedIcon: Icons.grid_view_outlined,
+        selectedIcon: Icons.menu_rounded,
+        unselectedIcon: Icons.menu_rounded,
       ),
     ];
 
