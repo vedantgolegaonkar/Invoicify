@@ -114,15 +114,15 @@ class DashboardScreen extends ConsumerWidget {
 
     return GridView.count(
       crossAxisCount: 2,
-      crossAxisSpacing: 16,
-      mainAxisSpacing: 16,
+      crossAxisSpacing: 12,
+      mainAxisSpacing: 12,
       shrinkWrap: true,
       physics: const NeverScrollableScrollPhysics(),
-      childAspectRatio: 1.5,
+      childAspectRatio: 1.35,
       children: [
-        _buildStatCard(context, 'Today\'s Sales', '₹ ${todaySales.toStringAsFixed(2)}', Icons.currency_rupee, Colors.green),
-        _buildStatCard(context, 'Today\'s Collection', '₹ ${todayCollection.toStringAsFixed(2)}', Icons.account_balance_wallet, Colors.blue),
-        _buildStatCard(context, 'Outstanding', '₹ ${outstanding.toStringAsFixed(2)}', Icons.warning_amber_rounded, Colors.orange),
+        _buildStatCard(context, 'Today\'s Sales', '₹${todaySales.toStringAsFixed(2)}', Icons.currency_rupee, Colors.green),
+        _buildStatCard(context, 'Today\'s Collection', '₹${todayCollection.toStringAsFixed(2)}', Icons.account_balance_wallet, Colors.blue),
+        _buildStatCard(context, 'Outstanding', '₹${outstanding.toStringAsFixed(2)}', Icons.warning_amber_rounded, Colors.orange),
         _buildStatCard(context, 'Customers', '$totalCustomers', Icons.people, Colors.purple),
       ],
     );
@@ -130,32 +130,48 @@ class DashboardScreen extends ConsumerWidget {
 
   Widget _buildStatCard(BuildContext context, String title, String value, IconData icon, Color color) {
     return Card(
-      elevation: 2,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      elevation: 1.5,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
       child: Padding(
-        padding: const EdgeInsets.all(16.0),
+        padding: const EdgeInsets.symmetric(horizontal: 14.0, vertical: 12.0),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
-          mainAxisAlignment: MainAxisAlignment.center,
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
             Row(
               children: [
-                Icon(icon, size: 24, color: color),
+                CircleAvatar(
+                  radius: 16,
+                  backgroundColor: color.withValues(alpha: 0.12),
+                  child: Icon(icon, size: 18, color: color),
+                ),
                 const SizedBox(width: 8),
                 Expanded(
                   child: Text(
                     title,
-                    style: Theme.of(context).textTheme.bodySmall,
+                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                      color: Colors.grey.shade700,
+                      fontWeight: FontWeight.w600,
+                      fontSize: 11.5,
+                    ),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                   ),
                 ),
               ],
             ),
-            const SizedBox(height: 8),
-            Text(
-              value,
-              style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
+            const SizedBox(height: 4),
+            FittedBox(
+              fit: BoxFit.scaleDown,
+              alignment: Alignment.centerLeft,
+              child: Text(
+                value,
+                style: const TextStyle(
+                  fontSize: 19,
+                  fontWeight: FontWeight.bold,
+                  letterSpacing: -0.3,
+                ),
+              ),
             ),
           ],
         ),
@@ -166,23 +182,44 @@ class DashboardScreen extends ConsumerWidget {
 
   Widget _buildTopProducts(AsyncValue<List<ProductModel>> productsAsync) {
     return productsAsync.when(
-      loading: () => const CircularProgressIndicator(),
+      loading: () => const Center(child: Padding(padding: EdgeInsets.all(16.0), child: CircularProgressIndicator())),
       error: (e, st) => Text('Error loading products: $e'),
       data: (products) {
-        if (products.isEmpty) return const Text('No products available.');
+        if (products.isEmpty) {
+          return Padding(
+            padding: const EdgeInsets.symmetric(vertical: 16.0),
+            child: Text('No products available.', style: TextStyle(color: Colors.grey.shade600)),
+          );
+        }
         final takeCount = products.length > 5 ? 5 : products.length;
         
-        return ListView.builder(
+        return ListView.separated(
           shrinkWrap: true,
           physics: const NeverScrollableScrollPhysics(),
           itemCount: takeCount,
+          separatorBuilder: (_, __) => const Divider(height: 1),
           itemBuilder: (context, index) {
             final p = products[index];
             return ListTile(
-              leading: const CircleAvatar(child: Icon(Icons.inventory_2)),
-              title: Text(p.name),
-              subtitle: Text('Stock: ${p.currentStock}'),
-
+              contentPadding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+              leading: CircleAvatar(
+                backgroundColor: Colors.blue.withValues(alpha: 0.1),
+                child: const Icon(Icons.inventory_2, color: Colors.blue, size: 20),
+              ),
+              title: Text(
+                p.name,
+                style: const TextStyle(fontWeight: FontWeight.w600),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
+              subtitle: Text(
+                'Stock: ${p.currentStock}',
+                style: TextStyle(color: Colors.grey.shade600, fontSize: 12),
+              ),
+              trailing: Text(
+                '₹${p.sellingPrice.toStringAsFixed(2)}',
+                style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+              ),
             );
           },
         );
@@ -192,24 +229,50 @@ class DashboardScreen extends ConsumerWidget {
 
   Widget _buildRecentActivities(AsyncValue<List<OrderModel>> ordersAsync) {
     return ordersAsync.when(
-      loading: () => const CircularProgressIndicator(),
+      loading: () => const Center(child: Padding(padding: EdgeInsets.all(16.0), child: CircularProgressIndicator())),
       error: (e, st) => Text('Error loading orders: $e'),
       data: (orders) {
-        if (orders.isEmpty) return const Text('No recent orders.');
+        if (orders.isEmpty) {
+          return Padding(
+            padding: const EdgeInsets.symmetric(vertical: 16.0),
+            child: Text('No recent orders.', style: TextStyle(color: Colors.grey.shade600)),
+          );
+        }
         // Sort by date descending
         final sortedOrders = List.from(orders)..sort((a, b) => (b as OrderModel).orderDate.compareTo((a as OrderModel).orderDate));
         final takeCount = sortedOrders.length > 5 ? 5 : sortedOrders.length;
 
-        return ListView.builder(
+        return ListView.separated(
           shrinkWrap: true,
           physics: const NeverScrollableScrollPhysics(),
           itemCount: takeCount,
+          separatorBuilder: (_, __) => const Divider(height: 1),
           itemBuilder: (context, index) {
             final o = sortedOrders[index] as OrderModel;
             return ListTile(
-              leading: const Icon(Icons.history),
-              title: Text('Order #${o.orderNumber} created'),
-              subtitle: Text(o.status.name),
+              contentPadding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+              leading: CircleAvatar(
+                backgroundColor: Colors.orange.withValues(alpha: 0.1),
+                child: const Icon(Icons.receipt_outlined, color: Colors.orange, size: 20),
+              ),
+              title: Text(
+                'Order #${o.orderNumber}',
+                style: const TextStyle(fontWeight: FontWeight.w600),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
+              subtitle: Text(
+                o.status.name.toUpperCase(),
+                style: TextStyle(
+                  fontSize: 11,
+                  fontWeight: FontWeight.bold,
+                  color: o.status == OrderStatus.completed ? Colors.green : Colors.orange,
+                ),
+              ),
+              trailing: Text(
+                '₹${o.total.toStringAsFixed(2)}',
+                style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+              ),
             );
           },
         );
