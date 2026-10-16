@@ -4,7 +4,7 @@ import '../data/customer_repository.dart';
 import '../../invoices/providers/invoice_providers.dart';
 import '../../payments/providers/payment_providers.dart';
 
-final customersStreamProvider = StreamProvider.autoDispose<List<CustomerModel>>((ref) {
+final customersStreamProvider = StreamProvider<List<CustomerModel>>((ref) {
   final repository = ref.watch(customerRepositoryProvider);
   return repository.streamAll();
 });

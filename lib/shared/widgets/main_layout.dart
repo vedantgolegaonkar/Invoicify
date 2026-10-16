@@ -13,17 +13,10 @@ class MainLayout extends ConsumerWidget {
     required this.navigationShell,
   });
 
-  void _onItemTapped(int index, WidgetRef ref) {
-    if (index == 2) {
-      ref.invalidate(orderSearchQueryProvider);
-      ref.invalidate(orderStatusFilterProvider);
-    } else if (index == 3) {
-      ref.invalidate(invoiceSearchQueryProvider);
-      ref.invalidate(invoiceStatusFilterProvider);
-    }
+  void _onItemTapped(int index) {
     navigationShell.goBranch(
       index,
-      initialLocation: true,
+      initialLocation: index == navigationShell.currentIndex,
     );
   }
 
@@ -86,7 +79,7 @@ class MainLayout extends ConsumerWidget {
                   context: context,
                   item: item,
                   isSelected: isSelected,
-                  onTap: () => _onItemTapped(index, ref),
+                  onTap: () => _onItemTapped(index),
                 );
               }),
             ),
@@ -108,8 +101,8 @@ class MainLayout extends ConsumerWidget {
       splashColor: AppColors.primary.withValues(alpha: 0.1),
       highlightColor: Colors.transparent,
       child: AnimatedContainer(
-        duration: const Duration(milliseconds: 250),
-        curve: Curves.easeInOutCubic,
+        duration: const Duration(milliseconds: 180),
+        curve: Curves.fastOutSlowIn,
         padding: EdgeInsets.symmetric(
           horizontal: isSelected ? 14 : 10,
           vertical: 8,
@@ -123,14 +116,10 @@ class MainLayout extends ConsumerWidget {
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            AnimatedScale(
-              duration: const Duration(milliseconds: 200),
-              scale: isSelected ? 1.08 : 1.0,
-              child: Icon(
-                isSelected ? item.selectedIcon : item.unselectedIcon,
-                size: 22,
-                color: isSelected ? AppColors.primary : AppColors.textSecondary,
-              ),
+            Icon(
+              isSelected ? item.selectedIcon : item.unselectedIcon,
+              size: 22,
+              color: isSelected ? AppColors.primary : AppColors.textSecondary,
             ),
             AnimatedCrossFade(
               firstChild: Padding(
@@ -151,7 +140,7 @@ class MainLayout extends ConsumerWidget {
               crossFadeState: isSelected
                   ? CrossFadeState.showFirst
                   : CrossFadeState.showSecond,
-              duration: const Duration(milliseconds: 200),
+              duration: const Duration(milliseconds: 150),
             ),
           ],
         ),
