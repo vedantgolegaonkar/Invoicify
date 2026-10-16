@@ -168,7 +168,7 @@ class _OutstandingReportScreenState extends ConsumerState<OutstandingReportScree
                           child: Container(
                             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                             decoration: BoxDecoration(
-                              color: Colors.white.withOpacity(0.15),
+                              color: Colors.white.withValues(alpha: 0.15),
                               borderRadius: BorderRadius.circular(20),
                             ),
                             child: const Row(
@@ -207,7 +207,7 @@ class _OutstandingReportScreenState extends ConsumerState<OutstandingReportScree
                           borderRadius: BorderRadius.circular(20),
                           boxShadow: [
                             BoxShadow(
-                              color: AppColors.error.withOpacity(0.2),
+                              color: AppColors.error.withValues(alpha: 0.2),
                               blurRadius: 10,
                               offset: const Offset(0, 6),
                             )
@@ -262,7 +262,7 @@ class _OutstandingReportScreenState extends ConsumerState<OutstandingReportScree
                           border: Border.all(color: Colors.grey.shade200),
                           boxShadow: [
                             BoxShadow(
-                              color: Colors.black.withOpacity(0.02),
+                              color: Colors.black.withValues(alpha: 0.02),
                               blurRadius: 10,
                               offset: const Offset(0, 4),
                             )

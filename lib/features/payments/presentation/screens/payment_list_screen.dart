@@ -50,7 +50,7 @@ class _PaymentListScreenState extends ConsumerState<PaymentListScreen> {
                 onChanged: (value) => setState(() => _searchQuery = value),
                 elevation: WidgetStateProperty.all(0),
                 backgroundColor: WidgetStateProperty.all(
-                  Theme.of(context).colorScheme.surfaceContainerHighest.withOpacity(0.5),
+                  Theme.of(context).colorScheme.surfaceContainerHighest.withValues(alpha: 0.5),
                 ),
                 padding: WidgetStateProperty.all(const EdgeInsets.symmetric(horizontal: 8)),
                 shape: WidgetStateProperty.all(
@@ -108,7 +108,6 @@ class _PaymentListScreenState extends ConsumerState<PaymentListScreen> {
                     (context, index) {
                       final payment = sortedPayments[index];
                       final customer = customers.where((c) => c.id == payment.customerId).firstOrNull;
-                      final customerName = customer?.name ?? 'Unknown Customer';
                       
                       return Padding(
                         padding: const EdgeInsets.only(bottom: 12.0),
@@ -151,7 +150,7 @@ class _PaymentCard extends StatelessWidget {
       elevation: 0,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(16),
-        side: BorderSide(color: colorScheme.outlineVariant.withOpacity(0.5)),
+        side: BorderSide(color: colorScheme.outlineVariant.withValues(alpha: 0.5)),
       ),
       clipBehavior: Clip.antiAlias,
       child: InkWell(
@@ -165,7 +164,7 @@ class _PaymentCard extends StatelessWidget {
                 width: 48,
                 height: 48,
                 decoration: BoxDecoration(
-                  color: AppColors.success.withOpacity(0.1),
+                  color: AppColors.success.withValues(alpha: 0.1),
                   shape: BoxShape.circle,
                 ),
                 alignment: Alignment.center,
@@ -203,7 +202,7 @@ class _PaymentCard extends StatelessWidget {
                     Container(
                       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
                       decoration: BoxDecoration(
-                        color: AppColors.primary.withOpacity(0.1),
+                        color: AppColors.primary.withValues(alpha: 0.1),
                         borderRadius: BorderRadius.circular(8),
                       ),
                       child: Text(
@@ -234,7 +233,7 @@ class _PaymentCard extends StatelessWidget {
                   Container(
                     padding: const EdgeInsets.all(4),
                     decoration: BoxDecoration(
-                      color: colorScheme.surfaceContainerHighest.withOpacity(0.5),
+                      color: colorScheme.surfaceContainerHighest.withValues(alpha: 0.5),
                       shape: BoxShape.circle,
                     ),
                     child: const Icon(Icons.chevron_right, color: AppColors.textSecondary, size: 16),

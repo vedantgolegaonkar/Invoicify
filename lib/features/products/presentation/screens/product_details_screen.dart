@@ -19,7 +19,7 @@ class ProductDetailsScreen extends ConsumerWidget {
     final theme = Theme.of(context);
 
     return Scaffold(
-      backgroundColor: theme.colorScheme.surfaceContainerHighest.withOpacity(0.3),
+      backgroundColor: theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.3),
       body: productsAsync.when(
         loading: () => const Center(child: CircularProgressIndicator()),
         error: (err, st) => Center(child: Text('Error: $err')),
@@ -129,8 +129,8 @@ class ProductDetailsScreen extends ConsumerWidget {
               end: Alignment.bottomCenter,
               colors: [
                 theme.colorScheme.primary,
-                theme.colorScheme.primary.withOpacity(0.8),
-                theme.colorScheme.surfaceContainerHighest.withOpacity(0.3),
+                theme.colorScheme.primary.withValues(alpha: 0.8),
+                theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.3),
               ],
               stops: const [0.0, 0.7, 1.0],
             ),
@@ -148,7 +148,7 @@ class ProductDetailsScreen extends ConsumerWidget {
                     shape: BoxShape.circle,
                     boxShadow: [
                       BoxShadow(
-                        color: Colors.black.withOpacity(0.1),
+                        color: Colors.black.withValues(alpha: 0.1),
                         blurRadius: 12,
                         offset: const Offset(0, 4),
                       ),
@@ -173,7 +173,7 @@ class ProductDetailsScreen extends ConsumerWidget {
                     borderRadius: BorderRadius.circular(20),
                     boxShadow: [
                       BoxShadow(
-                        color: Colors.black.withOpacity(0.05),
+                        color: Colors.black.withValues(alpha: 0.05),
                         blurRadius: 4,
                         offset: const Offset(0, 2),
                       ),
@@ -224,7 +224,7 @@ class ProductDetailsScreen extends ConsumerWidget {
         borderRadius: BorderRadius.circular(20),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.03),
+            color: Colors.black.withValues(alpha: 0.03),
             blurRadius: 12,
             offset: const Offset(0, 4),
           ),
@@ -238,7 +238,7 @@ class ProductDetailsScreen extends ConsumerWidget {
               Container(
                 padding: const EdgeInsets.all(8),
                 decoration: BoxDecoration(
-                  color: theme.colorScheme.primary.withOpacity(0.1),
+                  color: theme.colorScheme.primary.withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(10),
                 ),
                 child: Icon(icon, color: theme.colorScheme.primary, size: 20),
@@ -268,13 +268,13 @@ class ProductDetailsScreen extends ConsumerWidget {
           Row(
             children: [
               if (icon != null) ...[
-                Icon(icon, size: 16, color: theme.colorScheme.onSurface.withOpacity(0.4)),
+                Icon(icon, size: 16, color: theme.colorScheme.onSurface.withValues(alpha: 0.4)),
                 const SizedBox(width: 8),
               ],
               Text(
                 label,
                 style: theme.textTheme.bodyMedium?.copyWith(
-                  color: theme.colorScheme.onSurface.withOpacity(0.6),
+                  color: theme.colorScheme.onSurface.withValues(alpha: 0.6),
                 ),
               ),
             ],
@@ -294,7 +294,7 @@ class ProductDetailsScreen extends ConsumerWidget {
   Widget _buildDivider() {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 4.0),
-      child: Divider(height: 1, thickness: 1, color: Colors.grey.withOpacity(0.1)),
+      child: Divider(height: 1, thickness: 1, color: Colors.grey.withValues(alpha: 0.1)),
     );
   }
 

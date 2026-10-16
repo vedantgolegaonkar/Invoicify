@@ -12,7 +12,6 @@ import '../../providers/order_providers.dart';
 import '../../../invoices/providers/invoice_providers.dart';
 import '../../../invoices/domain/invoice_model.dart';
 import '../../../invoices/data/invoice_repository.dart';
-import '../../../settings/providers/settings_providers.dart';
 import '../../../settings/data/settings_repository.dart';
 import '../../../settings/domain/settings_model.dart';
 import '../../../inventory/data/inventory_repository.dart';

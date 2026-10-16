@@ -121,7 +121,7 @@ class InvoiceDetailsScreen extends ConsumerWidget {
                             children: [
                               Row(
                                 children: [
-                                  Icon(Icons.person_pin_circle_outlined, size: 18, color: AppColors.primary.withOpacity(0.8)),
+                                  Icon(Icons.person_pin_circle_outlined, size: 18, color: AppColors.primary.withValues(alpha: 0.8)),
                                   const SizedBox(width: 8),
                                   const Text(
                                     'CUSTOMER DETAILS',
@@ -141,7 +141,7 @@ class InvoiceDetailsScreen extends ConsumerWidget {
                                     width: 52,
                                     height: 52,
                                     decoration: BoxDecoration(
-                                      color: AppColors.primary.withOpacity(0.08),
+                                      color: AppColors.primary.withValues(alpha: 0.08),
                                       shape: BoxShape.circle,
                                     ),
                                     child: const Icon(Icons.person_outline, color: AppColors.primary, size: 26),
@@ -171,7 +171,7 @@ class InvoiceDetailsScreen extends ConsumerWidget {
                                   ),
                                   Container(
                                     decoration: BoxDecoration(
-                                      color: AppColors.success.withOpacity(0.1),
+                                      color: AppColors.success.withValues(alpha: 0.1),
                                       shape: BoxShape.circle,
                                     ),
                                     child: IconButton(
@@ -216,7 +216,7 @@ class InvoiceDetailsScreen extends ConsumerWidget {
                                 children: [
                                   Row(
                                     children: [
-                                      Icon(Icons.shopping_bag_outlined, size: 18, color: AppColors.primary.withOpacity(0.8)),
+                                      Icon(Icons.shopping_bag_outlined, size: 18, color: AppColors.primary.withValues(alpha: 0.8)),
                                       const SizedBox(width: 8),
                                       const Text(
                                         'INVOICE ITEMS',
@@ -232,7 +232,7 @@ class InvoiceDetailsScreen extends ConsumerWidget {
                                   Container(
                                     padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                                     decoration: BoxDecoration(
-                                      color: AppColors.primary.withOpacity(0.1),
+                                      color: AppColors.primary.withValues(alpha: 0.1),
                                       borderRadius: BorderRadius.circular(12),
                                     ),
                                     child: Text(
@@ -305,7 +305,7 @@ class InvoiceDetailsScreen extends ConsumerWidget {
                             children: [
                               Row(
                                 children: [
-                                  Icon(Icons.receipt_long_outlined, size: 18, color: AppColors.primary.withOpacity(0.8)),
+                                  Icon(Icons.receipt_long_outlined, size: 18, color: AppColors.primary.withValues(alpha: 0.8)),
                                   const SizedBox(width: 8),
                                   const Text(
                                     'PAYMENT SUMMARY',
@@ -365,7 +365,7 @@ class InvoiceDetailsScreen extends ConsumerWidget {
                               children: [
                                 Row(
                                   children: [
-                                    Icon(Icons.notes_outlined, size: 18, color: AppColors.primary.withOpacity(0.8)),
+                                    Icon(Icons.notes_outlined, size: 18, color: AppColors.primary.withValues(alpha: 0.8)),
                                     const SizedBox(width: 8),
                                     const Text(
                                       'NOTES',
@@ -383,7 +383,7 @@ class InvoiceDetailsScreen extends ConsumerWidget {
                                   width: double.infinity,
                                   padding: const EdgeInsets.all(12),
                                   decoration: BoxDecoration(
-                                    color: AppColors.surfaceVariant.withOpacity(0.5),
+                                    color: AppColors.surfaceVariant.withValues(alpha: 0.5),
                                     borderRadius: BorderRadius.circular(8),
                                   ),
                                   child: Text(
@@ -459,12 +459,12 @@ class InvoiceDetailsScreen extends ConsumerWidget {
         color: AppColors.surface,
         borderRadius: BorderRadius.circular(24),
         border: Border.all(
-          color: AppColors.textSecondary.withOpacity(0.1),
+          color: AppColors.textSecondary.withValues(alpha: 0.1),
           width: 1.5,
         ),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.03),
+            color: Colors.black.withValues(alpha: 0.03),
             blurRadius: 24,
             offset: const Offset(0, 8),
             spreadRadius: 0,
@@ -520,7 +520,7 @@ class InvoiceDetailsScreen extends ConsumerWidget {
         borderRadius: BorderRadius.circular(20),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.1),
+            color: Colors.black.withValues(alpha: 0.1),
             blurRadius: 4,
             offset: const Offset(0, 2),
           ),

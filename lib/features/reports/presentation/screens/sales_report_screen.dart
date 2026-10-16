@@ -19,14 +19,12 @@ class _SalesReportScreenState extends ConsumerState<SalesReportScreen> {
   String _dateRangeLabel = 'Last 7 Days';
   DateTime? _customStartDate;
   DateTime? _customEndDate;
-  int? _selectedBarIndex;
 
   void _setDateRange(String label, {DateTime? start, DateTime? end}) {
     setState(() {
       _dateRangeLabel = label;
       if (start != null) _customStartDate = start;
       if (end != null) _customEndDate = end;
-      _selectedBarIndex = null;
     });
   }
 
@@ -118,9 +116,6 @@ class _SalesReportScreenState extends ConsumerState<SalesReportScreen> {
           final totalGst = filteredInvoices.fold<double>(0.0, (sum, inv) => sum + inv.gst);
           final avgOrderValue = filteredInvoices.isEmpty ? 0.0 : totalSales / filteredInvoices.length;
 
-          // Prepare Chart Data (Group sales by day for the selected range)
-          final chartData = _generateChartData(filteredInvoices, currentStartDate, currentEndDate);
-
           return SingleChildScrollView(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -208,9 +203,9 @@ class _SalesReportScreenState extends ConsumerState<SalesReportScreen> {
                       //               Container(
                       //                 padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                       //                 decoration: BoxDecoration(
-                      //                   color: AppColors.primary.withOpacity(0.05),
+                      //                   color: AppColors.primary.withValues(alpha: 0.05),
                       //                   borderRadius: BorderRadius.circular(8),
-                      //                   border: Border.all(color: AppColors.primary.withOpacity(0.1)),
+                      //                   border: Border.all(color: AppColors.primary.withValues(alpha: 0.1)),
                       //                 ),
                       //                 child: Row(
                       //                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -327,7 +322,7 @@ class _SalesReportScreenState extends ConsumerState<SalesReportScreen> {
         }
       },
       selectedColor: AppColors.secondary,
-      backgroundColor: AppColors.primary.withOpacity(0.2),
+      backgroundColor: AppColors.primary.withValues(alpha: 0.2),
       labelStyle: TextStyle(
         color: isSelected ? AppColors.primary : Colors.white,
         fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
@@ -346,7 +341,7 @@ class _SalesReportScreenState extends ConsumerState<SalesReportScreen> {
         border: Border.all(color: Colors.grey.shade200),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.02),
+            color: Colors.black.withValues(alpha: 0.02),
             blurRadius: 10,
             offset: const Offset(0, 4),
           )
@@ -387,7 +382,7 @@ class _SalesReportScreenState extends ConsumerState<SalesReportScreen> {
         border: Border.all(color: Colors.grey.shade200),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.02),
+            color: Colors.black.withValues(alpha: 0.02),
             blurRadius: 12,
             offset: const Offset(0, 6),
           )
@@ -404,140 +399,4 @@ class _SalesReportScreenState extends ConsumerState<SalesReportScreen> {
       ),
     );
   }
-
-  Widget _buildSalesChart(List<_SalesChartPoint> data) {
-    final maxVal = data.map((d) => d.amount).fold<double>(0.0, (m, a) => a > m ? a : m);
-    final displayMax = maxVal == 0.0 ? 100.0 : maxVal * 1.1;
-
-    return SizedBox(
-      height: 160,
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-        crossAxisAlignment: CrossAxisAlignment.end,
-        children: List.generate(data.length, (index) {
-          final pt = data[index];
-          final percent = displayMax == 0 ? 0.0 : pt.amount / displayMax;
-          final isSelected = _selectedBarIndex == index;
-
-          return Expanded(
-            child: GestureDetector(
-              behavior: HitTestBehavior.opaque,
-              onTap: () {
-                setState(() {
-                  _selectedBarIndex = isSelected ? null : index;
-                });
-              },
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.end,
-                children: [
-                  Expanded(
-                    child: Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 4.0),
-                      child: Container(
-                        decoration: BoxDecoration(
-                          gradient: LinearGradient(
-                            colors: isSelected
-                                ? [AppColors.primary, AppColors.primary.withOpacity(0.8)]
-                                : [AppColors.primary.withOpacity(0.5), AppColors.primary.withOpacity(0.2)],
-                            begin: Alignment.topCenter,
-                            end: Alignment.bottomCenter,
-                          ),
-                          borderRadius: const BorderRadius.vertical(top: Radius.circular(6)),
-                          boxShadow: isSelected
-                              ? [
-                                  BoxShadow(
-                                    color: AppColors.primary.withOpacity(0.3),
-                                    blurRadius: 6,
-                                    offset: const Offset(0, -2),
-                                  )
-                                ]
-                              : null,
-                        ),
-                        // Wrap with FractionallySizedBox to control height relative to parent
-                        child: FractionallySizedBox(
-                          heightFactor: percent == 0.0 ? 0.02 : percent,
-                          alignment: Alignment.bottomCenter,
-                          child: Container(),
-                        ),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 6),
-                  Text(
-                    pt.axisLabel,
-                    style: TextStyle(
-                      fontSize: 9,
-                      fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
-                      color: isSelected ? AppColors.primary : AppColors.textSecondary,
-                    ),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                ],
-              ),
-            ),
-          );
-        }),
-      ),
-    );
-  }
-
-  List<_SalesChartPoint> _generateChartData(List<InvoiceModel> invoices, DateTime startDate, DateTime endDate) {
-    final diffDays = endDate.difference(startDate).inDays;
-    final List<_SalesChartPoint> points = [];
-
-    // Grouping by appropriate unit
-    if (diffDays <= 1) {
-      // 1 day range: split into morning, afternoon, evening
-      final morningSales = invoices.where((i) => i.invoiceDate.hour < 12).fold<double>(0.0, (s, i) => s + i.total);
-      final afternoonSales = invoices.where((i) => i.invoiceDate.hour >= 12 && i.invoiceDate.hour < 17).fold<double>(0.0, (s, i) => s + i.total);
-      final eveningSales = invoices.where((i) => i.invoiceDate.hour >= 17).fold<double>(0.0, (s, i) => s + i.total);
-
-      points.add(_SalesChartPoint('Morning', 'AM', morningSales));
-      points.add(_SalesChartPoint('Afternoon', 'PM', afternoonSales));
-      points.add(_SalesChartPoint('Evening', 'EVE', eveningSales));
-    } else if (diffDays <= 31) {
-      // Last 7 to 31 days: Group day-by-day to show dynamic chart correctly
-      for (int i = 0; i <= diffDays; i++) {
-        final day = startDate.add(Duration(days: i));
-        final daySales = invoices
-            .where((inv) => inv.invoiceDate.day == day.day && inv.invoiceDate.month == day.month && inv.invoiceDate.year == day.year)
-            .fold<double>(0.0, (s, inv) => s + inv.total);
-        points.add(_SalesChartPoint(
-          DateFormat('dd MMM').format(day),
-          diffDays <= 10 ? DateFormat('E').format(day) : '${day.day}/${day.month}',
-          daySales,
-        ));
-      }
-    } else {
-      // Larger range: Group by Month
-      final Map<String, double> monthlySales = {};
-      final Map<String, String> monthLabels = {};
-
-      for (var inv in invoices) {
-        final key = '${inv.invoiceDate.year}-${inv.invoiceDate.month.toString().padLeft(2, '0')}';
-        monthlySales[key] = (monthlySales[key] ?? 0.0) + inv.total;
-        monthLabels[key] = DateFormat('MMM yy').format(inv.invoiceDate);
-      }
-
-      final sortedKeys = monthlySales.keys.toList()..sort();
-      for (var key in sortedKeys) {
-        points.add(_SalesChartPoint(
-          monthLabels[key]!,
-          monthLabels[key]!.split(' ')[0], 
-          monthlySales[key]!,
-        ));
-      }
-    }
-
-    return points;
-  }
-}
-
-class _SalesChartPoint {
-  final String dateLabel;
-  final String axisLabel;
-  final double amount;
-
-  _SalesChartPoint(this.dateLabel, this.axisLabel, this.amount);
 }

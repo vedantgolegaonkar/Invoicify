@@ -58,7 +58,7 @@ class PaymentDetailsScreen extends ConsumerWidget {
                       Container(
                         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                         decoration: BoxDecoration(
-                          color: AppColors.primary.withOpacity(0.1),
+                          color: AppColors.primary.withValues(alpha: 0.1),
                           borderRadius: BorderRadius.circular(12),
                         ),
                         child: Text(
@@ -78,7 +78,7 @@ class PaymentDetailsScreen extends ConsumerWidget {
                     children: [
                       Row(
                         children: [
-                          Icon(Icons.info_outline, size: 18, color: AppColors.primary.withOpacity(0.8)),
+                          Icon(Icons.info_outline, size: 18, color: AppColors.primary.withValues(alpha: 0.8)),
                           const SizedBox(width: 8),
                           const Text(
                             'PAYMENT INFO',
@@ -115,7 +115,7 @@ class PaymentDetailsScreen extends ConsumerWidget {
                     children: [
                       Row(
                         children: [
-                          Icon(Icons.person_pin_circle_outlined, size: 18, color: AppColors.primary.withOpacity(0.8)),
+                          Icon(Icons.person_pin_circle_outlined, size: 18, color: AppColors.primary.withValues(alpha: 0.8)),
                           const SizedBox(width: 8),
                           const Text(
                             'CUSTOMER DETAILS',
@@ -135,7 +135,7 @@ class PaymentDetailsScreen extends ConsumerWidget {
                             width: 52,
                             height: 52,
                             decoration: BoxDecoration(
-                              color: AppColors.primary.withOpacity(0.08),
+                              color: AppColors.primary.withValues(alpha: 0.08),
                               shape: BoxShape.circle,
                             ),
                             child: const Icon(Icons.person_outline, color: AppColors.primary, size: 26),
@@ -166,7 +166,7 @@ class PaymentDetailsScreen extends ConsumerWidget {
                           if (customer?.mobile != null && customer!.mobile.isNotEmpty)
                             Container(
                               decoration: BoxDecoration(
-                                color: AppColors.success.withOpacity(0.1),
+                                color: AppColors.success.withValues(alpha: 0.1),
                                 shape: BoxShape.circle,
                               ),
                               child: IconButton(
@@ -205,10 +205,10 @@ class PaymentDetailsScreen extends ConsumerWidget {
       decoration: BoxDecoration(
         color: AppColors.surface,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: AppColors.border.withOpacity(0.5)),
+        border: Border.all(color: AppColors.border.withValues(alpha: 0.5)),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.03),
+            color: Colors.black.withValues(alpha: 0.03),
             blurRadius: 10,
             offset: const Offset(0, 4),
           ),

@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'package:intl/intl.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../invoices/providers/invoice_providers.dart';
 import '../../../payments/providers/payment_providers.dart';
@@ -53,9 +52,6 @@ class ReportsHomeScreen extends ConsumerWidget {
           final double thisMonthCollected = thisMonthPayments.fold(0.0, (sum, p) => sum + p.amount);
 
           final int lowStockCount = activeProducts.where((p) => p.currentStock <= p.minimumStock).length;
-
-          // Prepare 7 Days Sales Trend
-          final List<_TrendPoint> salesTrend = _calculate7DayTrend(activeInvoices);
 
           return SingleChildScrollView(
             padding: const EdgeInsets.all(16.0),
@@ -109,7 +105,7 @@ class ReportsHomeScreen extends ConsumerWidget {
                 //     border: Border.all(color: Colors.grey.shade200),
                 //     boxShadow: [
                 //       BoxShadow(
-                //         color: Colors.black.withOpacity(0.02),
+                //         color: Colors.black.withValues(alpha: 0.02),
                 //         blurRadius: 12,
                 //         offset: const Offset(0, 6),
                 //       )
@@ -233,7 +229,7 @@ class ReportsHomeScreen extends ConsumerWidget {
         children: [
           CircleAvatar(
             radius: 18,
-            backgroundColor: color.withOpacity(0.1),
+            backgroundColor: color.withValues(alpha: 0.1),
             child: Icon(icon, color: color, size: 18),
           ),
           const SizedBox(width: 12),
@@ -260,56 +256,6 @@ class ReportsHomeScreen extends ConsumerWidget {
             ),
           )
         ],
-      ),
-    );
-  }
-
-  Widget _buildTrendChart(List<_TrendPoint> data) {
-    final maxVal = data.map((d) => d.amount).fold<double>(0.0, (m, c) => c > m ? c : m);
-    final displayMax = maxVal == 0.0 ? 100.0 : maxVal * 1.1;
-
-    return SizedBox(
-      height: 100,
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-        crossAxisAlignment: CrossAxisAlignment.end,
-        children: List.generate(data.length, (index) {
-          final pt = data[index];
-          final percent = displayMax == 0 ? 0.0 : pt.amount / displayMax;
-
-          return Expanded(
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.end,
-              children: [
-                Expanded(
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 5.0),
-                    child: Container(
-                      decoration: BoxDecoration(
-                        gradient: const LinearGradient(
-                          colors: [AppColors.primary, AppColors.secondary],
-                          begin: Alignment.topCenter,
-                          end: Alignment.bottomCenter,
-                        ),
-                        borderRadius: const BorderRadius.vertical(top: Radius.circular(5)),
-                      ),
-                      child: FractionallySizedBox(
-                        heightFactor: percent == 0.0 ? 0.05 : percent,
-                        alignment: Alignment.bottomCenter,
-                        child: Container(),
-                      ),
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 6),
-                Text(
-                  pt.dayLabel,
-                  style: const TextStyle(fontSize: 9, color: AppColors.textSecondary, fontWeight: FontWeight.bold),
-                ),
-              ],
-            ),
-          );
-        }),
       ),
     );
   }
@@ -341,7 +287,7 @@ class ReportsHomeScreen extends ConsumerWidget {
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
                   CircleAvatar(
-                    backgroundColor: color.withOpacity(0.1),
+                    backgroundColor: color.withValues(alpha: 0.1),
                     child: Icon(icon, color: color, size: 22),
                   ),
                   Column(
@@ -385,26 +331,4 @@ class ReportsHomeScreen extends ConsumerWidget {
     );
   }
 
-  List<_TrendPoint> _calculate7DayTrend(List<InvoiceModel> invoices) {
-    final List<_TrendPoint> trend = [];
-    for (int i = 6; i >= 0; i--) {
-      final date = DateTime.now().subtract(Duration(days: i));
-      final daySales = invoices
-          .where((inv) => inv.invoiceDate.day == date.day && inv.invoiceDate.month == date.month && inv.invoiceDate.year == date.year)
-          .fold<double>(0.0, (sum, inv) => sum + inv.total);
-
-      trend.add(_TrendPoint(
-        DateFormat('E').format(date), // e.g. Mon, Tue
-        daySales,
-      ));
-    }
-    return trend;
-  }
-}
-
-class _TrendPoint {
-  final String dayLabel;
-  final double amount;
-
-  _TrendPoint(this.dayLabel, this.amount);
 }

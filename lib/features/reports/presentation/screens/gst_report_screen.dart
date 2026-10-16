@@ -200,7 +200,7 @@ class _GstReportScreenState extends ConsumerState<GstReportScreen> {
                           border: Border.all(color: Colors.grey.shade200),
                           boxShadow: [
                             BoxShadow(
-                              color: Colors.black.withOpacity(0.02),
+                              color: Colors.black.withValues(alpha: 0.02),
                               blurRadius: 10,
                               offset: const Offset(0, 4),
                             )
@@ -440,7 +440,7 @@ class _GstReportScreenState extends ConsumerState<GstReportScreen> {
         }
       },
       selectedColor: AppColors.secondary,
-      backgroundColor: AppColors.primary.withOpacity(0.2),
+      backgroundColor: AppColors.primary.withValues(alpha: 0.2),
       labelStyle: TextStyle(
         color: isSelected ? AppColors.primary : Colors.white,
         fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,

@@ -61,7 +61,7 @@ class OrderListScreen extends ConsumerWidget {
                     onChanged: (value) => ref.read(orderSearchQueryProvider.notifier).setQuery(value),
                     elevation: WidgetStateProperty.all(0),
                     backgroundColor: WidgetStateProperty.all(
-                      Theme.of(context).colorScheme.surfaceContainerHighest.withOpacity(0.5),
+                      Theme.of(context).colorScheme.surfaceContainerHighest.withValues(alpha: 0.5),
                     ),
                     padding: WidgetStateProperty.all(const EdgeInsets.symmetric(horizontal: 8)),
                     shape: WidgetStateProperty.all(
@@ -166,7 +166,7 @@ class OrderListScreen extends ConsumerWidget {
       selected: isSelected,
       onSelected: (_) => ref.read(orderStatusFilterProvider.notifier).setFilter(status),
       showCheckmark: false,
-      backgroundColor: Theme.of(context).colorScheme.surfaceContainerHighest.withOpacity(0.3),
+      backgroundColor: Theme.of(context).colorScheme.surfaceContainerHighest.withValues(alpha: 0.3),
       selectedColor: Theme.of(context).colorScheme.primaryContainer,
       labelStyle: TextStyle(
         color: isSelected 
@@ -203,7 +203,6 @@ class _OrderCard extends StatelessWidget {
         case OrderStatus.cancelled:
           return Colors.red;
         case OrderStatus.draft:
-        default:
           return Colors.grey.shade600;
       }
     }
@@ -212,7 +211,7 @@ class _OrderCard extends StatelessWidget {
       elevation: 0,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(16),
-        side: BorderSide(color: colorScheme.outlineVariant.withOpacity(0.5)),
+        side: BorderSide(color: colorScheme.outlineVariant.withValues(alpha: 0.5)),
       ),
       clipBehavior: Clip.antiAlias,
       child: InkWell(

@@ -8,7 +8,6 @@ import 'package:go_router/go_router.dart';
 import '../../providers/customer_providers.dart';
 import '../../data/customer_repository.dart';
 import '../../../products/providers/product_providers.dart';
-import '../../../invoices/domain/invoice_model.dart';
 
 class CustomerDetailsScreen extends ConsumerWidget {
   final String customerId;
@@ -448,7 +447,7 @@ class _CustomerLedger extends StatelessWidget {
             Container(
               padding: const EdgeInsets.all(8),
               decoration: BoxDecoration(
-                color: isPayment ? Colors.green.withOpacity(0.1) : Colors.red.withOpacity(0.1),
+                color: isPayment ? Colors.green.withValues(alpha: 0.1) : Colors.red.withValues(alpha: 0.1),
                 shape: BoxShape.circle,
               ),
               child: Icon(
@@ -599,7 +598,7 @@ class _CustomerTimeline extends StatelessWidget {
                 Container(
                   padding: const EdgeInsets.all(8),
                   decoration: BoxDecoration(
-                    color: (event['color'] as Color).withOpacity(0.1),
+                    color: (event['color'] as Color).withValues(alpha: 0.1),
                     shape: BoxShape.circle,
                   ),
                   child: Icon(

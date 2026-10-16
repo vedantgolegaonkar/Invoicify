@@ -94,7 +94,7 @@ class InventoryDashboardScreen extends ConsumerWidget {
                       padding: const EdgeInsets.symmetric(
                           horizontal: 10, vertical: 3),
                       decoration: BoxDecoration(
-                        color: AppColors.error.withOpacity(0.1),
+                        color: AppColors.error.withValues(alpha: 0.1),
                         borderRadius: BorderRadius.circular(12),
                       ),
                       child: Text(
@@ -133,20 +133,20 @@ class InventoryDashboardScreen extends ConsumerWidget {
                       decoration: BoxDecoration(
                         gradient: LinearGradient(
                           colors: [
-                            AppColors.success.withOpacity(0.07),
-                            AppColors.success.withOpacity(0.02),
+                            AppColors.success.withValues(alpha: 0.07),
+                            AppColors.success.withValues(alpha: 0.02),
                           ],
                         ),
                         borderRadius: BorderRadius.circular(20),
                         border: Border.all(
-                            color: AppColors.success.withOpacity(0.2)),
+                            color: AppColors.success.withValues(alpha: 0.2)),
                       ),
                       child: Column(
                         children: [
                           Container(
                             padding: const EdgeInsets.all(14),
                             decoration: BoxDecoration(
-                              color: AppColors.success.withOpacity(0.15),
+                              color: AppColors.success.withValues(alpha: 0.15),
                               shape: BoxShape.circle,
                             ),
                             child: const Icon(Icons.verified_outlined,
@@ -225,7 +225,7 @@ class InventoryDashboardScreen extends ConsumerWidget {
                 'Manage your product stock',
                 style: TextStyle(
                   fontSize: 14,
-                  color: Colors.white.withOpacity(0.75),
+                  color: Colors.white.withValues(alpha: 0.75),
                 ),
               ),
               const SizedBox(height: 24),
@@ -273,7 +273,7 @@ class _StatBadge extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final badgeColor =
-        isAlert ? const Color(0xFFFFCC80) : Colors.white.withOpacity(0.15);
+        isAlert ? const Color(0xFFFFCC80) : Colors.white.withValues(alpha: 0.15);
     final textColor = isAlert ? const Color(0xFF4E342E) : Colors.white;
 
     return Container(
@@ -301,7 +301,7 @@ class _StatBadge extends StatelessWidget {
                 Text(
                   label,
                   style: TextStyle(
-                    color: textColor.withOpacity(0.8),
+                    color: textColor.withValues(alpha: 0.8),
                     fontSize: 11,
                   ),
                   maxLines: 1,
@@ -344,7 +344,7 @@ class _GradientActionButton extends StatelessWidget {
           borderRadius: BorderRadius.circular(18),
           boxShadow: [
             BoxShadow(
-              color: gradientColors.first.withOpacity(0.35),
+              color: gradientColors.first.withValues(alpha: 0.35),
               blurRadius: 12,
               offset: const Offset(0, 6),
             ),
@@ -393,14 +393,14 @@ class _HistoryTile extends StatelessWidget {
                 color: Theme.of(context)
                     .colorScheme
                     .outlineVariant
-                    .withOpacity(0.5)),
+                    .withValues(alpha: 0.5)),
           ),
           child: Row(
             children: [
               Container(
                 padding: const EdgeInsets.all(10),
                 decoration: BoxDecoration(
-                  color: AppColors.primary.withOpacity(0.1),
+                  color: AppColors.primary.withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(12),
                 ),
                 child: const Icon(Icons.receipt_long_outlined,
@@ -452,7 +452,7 @@ class _LowStockTile extends StatelessWidget {
       decoration: BoxDecoration(
         color: AppColors.surface,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: color.withOpacity(0.25)),
+        border: Border.all(color: color.withValues(alpha: 0.25)),
       ),
       child: Row(
         children: [
@@ -460,7 +460,7 @@ class _LowStockTile extends StatelessWidget {
             width: 46,
             height: 46,
             decoration: BoxDecoration(
-              color: color.withOpacity(0.1),
+              color: color.withValues(alpha: 0.1),
               borderRadius: BorderRadius.circular(12),
             ),
             child: Icon(Icons.inventory_2_outlined, color: color, size: 22),
@@ -497,7 +497,7 @@ class _LowStockTile extends StatelessWidget {
                 padding:
                     const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
                 decoration: BoxDecoration(
-                  color: color.withOpacity(0.1),
+                  color: color.withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(8),
                 ),
                 child: Text(label,

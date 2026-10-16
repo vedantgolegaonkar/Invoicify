@@ -184,7 +184,7 @@ class _InventoryReportScreenState extends ConsumerState<InventoryReportScreen> w
                                     Container(
                                       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
                                       decoration: BoxDecoration(
-                                        color: isLow ? AppColors.error.withOpacity(0.1) : AppColors.success.withOpacity(0.1),
+                                        color: isLow ? AppColors.error.withValues(alpha: 0.1) : AppColors.success.withValues(alpha: 0.1),
                                         borderRadius: BorderRadius.circular(8),
                                       ),
                                       child: Text(
@@ -257,7 +257,7 @@ class _InventoryReportScreenState extends ConsumerState<InventoryReportScreen> w
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 CircleAvatar(
-                  backgroundColor: isIn ? AppColors.success.withOpacity(0.1) : AppColors.error.withOpacity(0.1),
+                  backgroundColor: isIn ? AppColors.success.withValues(alpha: 0.1) : AppColors.error.withValues(alpha: 0.1),
                   child: Icon(
                     isIn ? Icons.add_circle_outline : Icons.remove_circle_outline,
                     color: isIn ? AppColors.success : AppColors.error,

@@ -8,13 +8,13 @@ import '../../../customers/providers/customer_providers.dart';
 import '../../../customers/domain/customer_model.dart';
 import '../../../customers/data/customer_repository.dart';
 import '../../providers/invoice_providers.dart';
-import '../../../settings/providers/settings_providers.dart';
 import '../../../settings/data/settings_repository.dart';
-import '../../../products/providers/product_providers.dart';
 import '../../../products/data/product_repository.dart';
 import '../../../inventory/data/inventory_repository.dart';
 import '../../../inventory/domain/inventory_transaction_model.dart';
 import '../../../settings/domain/settings_model.dart';
+import '../../../products/domain/product_model.dart';
+import '../../../products/providers/product_providers.dart';
 
 class CreateInvoiceScreen extends ConsumerStatefulWidget {
   final String? invoiceId;
@@ -32,6 +32,43 @@ class _CreateInvoiceScreenState extends ConsumerState<CreateInvoiceScreen> {
   CustomerModel? _selectedCustomer;
   final List<InvoiceItem> _items = [];
   bool _isLoading = false;
+
+  @override
+  void initState() {
+    super.initState();
+    if (widget.invoiceId != null) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        _loadInvoice();
+      });
+    }
+  }
+
+  Future<void> _loadInvoice() async {
+    setState(() => _isLoading = true);
+    try {
+      final invoices = await ref.read(invoicesStreamProvider.future);
+      final invoice = invoices.firstWhere((i) => i.id == widget.invoiceId);
+
+      final customers = await ref.read(customersStreamProvider.future);
+      final customerMatches = customers.where((c) => c.id == invoice.customerId).toList();
+
+      if (mounted) {
+        setState(() {
+          _selectedCustomer = customerMatches.isNotEmpty ? customerMatches.first : null;
+          _items.addAll(invoice.items);
+          _notesController.text = invoice.notes ?? '';
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error loading invoice: $e')),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _isLoading = false);
+    }
+  }
 
   @override
   void dispose() {
@@ -229,19 +266,128 @@ class _CreateInvoiceScreenState extends ConsumerState<CreateInvoiceScreen> {
     }
   }
 
-  void _addDummyItem() {
+  void _showAddItemDialog() {
+    if (_selectedCustomer == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Please select a customer first to load pricing.')),
+      );
+      return;
+    }
+
+    if (_selectedCustomer!.productPrices == null || _selectedCustomer!.productPrices!.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Please configure product prices for this customer first.')),
+      );
+      return;
+    }
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+      ),
+      builder: (context) {
+        return DraggableScrollableSheet(
+          initialChildSize: 0.6,
+          maxChildSize: 0.9,
+          minChildSize: 0.4,
+          expand: false,
+          builder: (context, scrollController) {
+            final productsAsync = ref.watch(productsStreamProvider);
+            return productsAsync.when(
+              loading: () => const Center(child: CircularProgressIndicator()),
+              error: (err, st) => Center(child: Text('Error: $err')),
+              data: (allProducts) {
+                final products = allProducts.where((p) => p.isActive).toList();
+                if (products.isEmpty) {
+                  return const Center(child: Text('No products available. Please add products first.'));
+                }
+                return Column(
+                  children: [
+                    const Padding(
+                      padding: EdgeInsets.all(16.0),
+                      child: Text('Select Product', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
+                    ),
+                    Expanded(
+                      child: ListView.builder(
+                        controller: scrollController,
+                        itemCount: products.length,
+                        itemBuilder: (context, index) {
+                          final p = products[index];
+                          final price = _selectedCustomer!.productPrices?[p.id] ?? 0.0;
+                          return ListTile(
+                            title: Text(p.name),
+                            subtitle: Text(p.currentStock > 0 
+                                ? 'Stock: ${p.currentStock} | ₹${price.toStringAsFixed(2)}'
+                                : '₹${price.toStringAsFixed(2)}'),
+                            onTap: () {
+                              Navigator.pop(context);
+                              _addProduct(p);
+                            },
+                          );
+                        },
+                      ),
+                    ),
+                  ],
+                );
+              },
+            );
+          },
+        );
+      },
+    );
+  }
+
+  void _addProduct(ProductModel product) {
+    final existingIndex = _items.indexWhere((i) => i.productId == product.id);
+    if (existingIndex >= 0) {
+      final item = _items[existingIndex];
+      _updateItemQuantity(existingIndex, item.quantity + 1);
+    } else {
+      final qty = 1.0;
+      final price = _selectedCustomer!.productPrices?[product.id] ?? 0.0;
+      final subtotal = price * qty;
+      final gstAmount = (subtotal * (product.cgst + product.sgst) / 100) + (product.igst * qty);
+
+      setState(() {
+        _items.add(
+          InvoiceItem(
+            productId: product.id,
+            productName: product.name,
+            hsnCode: product.hsnCode,
+            quantity: qty,
+            unitPrice: price,
+            subtotal: subtotal,
+            gstAmount: gstAmount,
+            total: subtotal + gstAmount,
+          ),
+        );
+      });
+    }
+  }
+
+  void _updateItemQuantity(int index, double newQty) {
+    if (newQty <= 0) {
+      setState(() => _items.removeAt(index));
+      return;
+    }
+
+    final item = _items[index];
+    final subtotal = item.unitPrice * newQty;
+    final unitGst = item.quantity > 0 ? (item.gstAmount / item.quantity) : 0.0;
+    final newGstAmount = unitGst * newQty;
+
     setState(() {
-      _items.add(
-        InvoiceItem(
-          productId: 'dummy_prod',
-          productName: 'Custom Item',
-          hsnCode: '1234',
-          quantity: 1,
-          unitPrice: 100,
-          subtotal: 100,
-          gstAmount: 18,
-          total: 118,
-        )
+      _items[index] = InvoiceItem(
+        productId: item.productId,
+        productName: item.productName,
+        hsnCode: item.hsnCode,
+        quantity: newQty,
+        unitPrice: item.unitPrice,
+        subtotal: subtotal,
+        gstAmount: newGstAmount,
+        total: subtotal + newGstAmount,
       );
     });
   }
@@ -291,7 +437,7 @@ class _CreateInvoiceScreenState extends ConsumerState<CreateInvoiceScreen> {
                 children: [
                   Text('Invoice Items', style: Theme.of(context).textTheme.titleMedium),
                   TextButton.icon(
-                    onPressed: _addDummyItem,
+                    onPressed: _showAddItemDialog,
                     icon: const Icon(Icons.add),
                     label: const Text('Add Item'),
                   ),
@@ -310,18 +456,51 @@ class _CreateInvoiceScreenState extends ConsumerState<CreateInvoiceScreen> {
                   itemCount: _items.length,
                   itemBuilder: (context, index) {
                     final item = _items[index];
-                    return ListTile(
-                      title: Text(item.productName),
-                      subtitle: Text('${item.quantity} x ₹${item.unitPrice}'),
-                      trailing: Row(
-                        mainAxisSize: MainAxisSize.min,
+                    return Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 8.0, horizontal: 4.0),
+                      child: Row(
                         children: [
-                          Text('₹${item.total.toStringAsFixed(2)}', style: const TextStyle(fontWeight: FontWeight.bold)),
-                          IconButton(
-                            icon: const Icon(Icons.delete, color: Colors.red),
-                            onPressed: () {
-                              setState(() => _items.removeAt(index));
-                            },
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(item.productName, style: const TextStyle(fontWeight: FontWeight.bold)),
+                                const SizedBox(height: 4),
+                                Text('₹${item.unitPrice} / unit', style: const TextStyle(color: Colors.grey, fontSize: 12)),
+                              ],
+                            ),
+                          ),
+                          Row(
+                            children: [
+                              IconButton(
+                                icon: const Icon(Icons.remove_circle_outline, color: Colors.blue),
+                                onPressed: () => _updateItemQuantity(index, item.quantity - 1),
+                                constraints: const BoxConstraints(),
+                                padding: const EdgeInsets.all(4),
+                              ),
+                              Padding(
+                                padding: const EdgeInsets.symmetric(horizontal: 8.0),
+                                child: Text('${item.quantity.toInt()}', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+                              ),
+                              IconButton(
+                                icon: const Icon(Icons.add_circle_outline, color: Colors.blue),
+                                onPressed: () => _updateItemQuantity(index, item.quantity + 1),
+                                constraints: const BoxConstraints(),
+                                padding: const EdgeInsets.all(4),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(width: 16),
+                          Column(
+                            crossAxisAlignment: CrossAxisAlignment.end,
+                            children: [
+                              Text('₹${item.total.toStringAsFixed(2)}', style: const TextStyle(fontWeight: FontWeight.bold)),
+                              const SizedBox(height: 4),
+                              InkWell(
+                                onTap: () => setState(() => _items.removeAt(index)),
+                                child: const Icon(Icons.delete, color: Colors.red, size: 20),
+                              ),
+                            ],
                           ),
                         ],
                       ),

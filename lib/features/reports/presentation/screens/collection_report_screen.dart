@@ -15,8 +15,6 @@ class CollectionReportScreen extends ConsumerStatefulWidget {
 }
 
 class _CollectionReportScreenState extends ConsumerState<CollectionReportScreen> {
-  int? _selectedBarIndex;
-
   @override
   Widget build(BuildContext context) {
     final invoicesAsync = ref.watch(invoicesStreamProvider);
@@ -58,7 +56,7 @@ class _CollectionReportScreenState extends ConsumerState<CollectionReportScreen>
                     border: Border.all(color: Colors.grey.shade200),
                     boxShadow: [
                       BoxShadow(
-                        color: Colors.black.withOpacity(0.02),
+                        color: Colors.black.withValues(alpha: 0.02),
                         blurRadius: 10,
                         offset: const Offset(0, 4),
                       )
@@ -144,9 +142,9 @@ class _CollectionReportScreenState extends ConsumerState<CollectionReportScreen>
                 //         Container(
                 //           padding: const EdgeInsets.all(12),
                 //           decoration: BoxDecoration(
-                //             color: AppColors.primary.withOpacity(0.05),
+                //             color: AppColors.primary.withValues(alpha: 0.05),
                 //             borderRadius: BorderRadius.circular(10),
-                //             border: Border.all(color: AppColors.primary.withOpacity(0.1)),
+                //             border: Border.all(color: AppColors.primary.withValues(alpha: 0.1)),
                 //           ),
                 //           child: Column(
                 //             children: [
@@ -268,85 +266,6 @@ class _CollectionReportScreenState extends ConsumerState<CollectionReportScreen>
             ),
           );
         },
-      ),
-    );
-  }
-
-  Widget _buildCollectionChart(List<_MonthlyCollectionItem> data) {
-    // Reverse data to display chronologically left-to-right (past to present)
-    final chronologicalData = data.reversed.toList();
-    final maxVal = chronologicalData.map((d) => d.totalCollected).fold<double>(0.0, (m, c) => c > m ? c : m);
-    final displayMax = maxVal == 0.0 ? 100.0 : maxVal * 1.1;
-
-    return SizedBox(
-      height: 160,
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-        crossAxisAlignment: CrossAxisAlignment.end,
-        children: List.generate(chronologicalData.length, (index) {
-          final item = chronologicalData[index];
-          final percent = displayMax == 0 ? 0.0 : item.totalCollected / displayMax;
-          
-          // Map reversed index back to selected index in list
-          final actualIndex = data.indexOf(item);
-          final isSelected = _selectedBarIndex == actualIndex;
-
-          return Expanded(
-            child: GestureDetector(
-              behavior: HitTestBehavior.opaque,
-              onTap: () {
-                setState(() {
-                  _selectedBarIndex = isSelected ? null : actualIndex;
-                });
-              },
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.end,
-                children: [
-                  Expanded(
-                    child: Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 6.0),
-                      child: Container(
-                        decoration: BoxDecoration(
-                          gradient: LinearGradient(
-                            colors: isSelected
-                                ? [AppColors.success, AppColors.success.withOpacity(0.8)]
-                                : [AppColors.success.withOpacity(0.5), AppColors.success.withOpacity(0.2)],
-                            begin: Alignment.topCenter,
-                            end: Alignment.bottomCenter,
-                          ),
-                          borderRadius: const BorderRadius.vertical(top: Radius.circular(6)),
-                          boxShadow: isSelected
-                              ? [
-                                  BoxShadow(
-                                    color: AppColors.success.withOpacity(0.3),
-                                    blurRadius: 6,
-                                    offset: const Offset(0, -2),
-                                  )
-                                ]
-                              : null,
-                        ),
-                        child: FractionallySizedBox(
-                          heightFactor: percent == 0.0 ? 0.02 : percent,
-                          alignment: Alignment.bottomCenter,
-                          child: Container(),
-                        ),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 6),
-                  Text(
-                    item.monthCode,
-                    style: TextStyle(
-                      fontSize: 9,
-                      fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
-                      color: isSelected ? AppColors.success : AppColors.textSecondary,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          );
-        }),
       ),
     );
   }
