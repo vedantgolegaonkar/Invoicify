@@ -63,12 +63,19 @@ class NotificationsScreen extends ConsumerWidget {
               String displayMessage = notification.message;
               
               if (displayTitle.contains('users/') || displayTitle.contains('A new record')) {
-                if (displayTitle.contains('/customers')) displayTitle = 'Customer Added';
-                else if (displayTitle.contains('/products')) displayTitle = 'Product Added';
-                else if (displayTitle.contains('/invoices')) displayTitle = 'Invoice Created';
-                else if (displayTitle.contains('/orders')) displayTitle = 'Order Created';
-                else if (displayTitle.contains('/payments')) displayTitle = 'Payment Recorded';
-                else displayTitle = 'New Activity';
+                if (displayTitle.contains('/customers')) {
+                  displayTitle = 'Customer Added';
+                } else if (displayTitle.contains('/products')) {
+                  displayTitle = 'Product Added';
+                } else if (displayTitle.contains('/invoices')) {
+                  displayTitle = 'Invoice Created';
+                } else if (displayTitle.contains('/orders')) {
+                  displayTitle = 'Order Created';
+                } else if (displayTitle.contains('/payments')) {
+                  displayTitle = 'Payment Recorded';
+                } else {
+                  displayTitle = 'New Activity';
+                }
                 
                 displayMessage = 'A new $displayTitle was successfully recorded in your account.';
               }

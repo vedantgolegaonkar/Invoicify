@@ -67,7 +67,7 @@ class _SplashScreenState extends ConsumerState<SplashScreen> with SingleTickerPr
             context.go('/pin');
           } else {
             await repository.clearCurrentUser();
-            context.go('/login');
+            if (mounted) context.go('/login');
           }
         }
       } catch (e) {

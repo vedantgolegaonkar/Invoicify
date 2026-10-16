@@ -213,12 +213,23 @@ class DashboardScreen extends ConsumerWidget {
                 overflow: TextOverflow.ellipsis,
               ),
               subtitle: Text(
-                'Stock: ${p.currentStock}',
+                'Current Stock: ${p.currentStock.toInt()}',
                 style: TextStyle(color: Colors.grey.shade600, fontSize: 12),
               ),
-              trailing: Text(
-                '₹${p.sellingPrice.toStringAsFixed(2)}',
-                style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+              trailing: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                decoration: BoxDecoration(
+                  color: (p.currentStock <= p.minimumStock ? Colors.orange : Colors.green).withValues(alpha: 0.12),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Text(
+                  p.currentStock <= p.minimumStock ? 'Low Stock' : 'In Stock',
+                  style: TextStyle(
+                    fontWeight: FontWeight.bold,
+                    fontSize: 12,
+                    color: p.currentStock <= p.minimumStock ? Colors.orange.shade800 : Colors.green.shade800,
+                  ),
+                ),
               ),
             );
           },
@@ -266,7 +277,11 @@ class DashboardScreen extends ConsumerWidget {
                 style: TextStyle(
                   fontSize: 11,
                   fontWeight: FontWeight.bold,
-                  color: o.status == OrderStatus.completed ? Colors.green : Colors.orange,
+                  color: o.status == OrderStatus.delivered
+                      ? Colors.green
+                      : o.status == OrderStatus.cancelled
+                          ? Colors.red
+                          : Colors.orange,
                 ),
               ),
               trailing: Text(
