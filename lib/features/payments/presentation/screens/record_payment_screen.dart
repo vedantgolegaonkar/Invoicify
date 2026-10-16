@@ -252,18 +252,17 @@ class _RecordPaymentScreenState extends ConsumerState<RecordPaymentScreen> {
                 error: (e, st) => Text('Error loading customers: $e'),
                 data: (customers) {
                     // Try to auto-select if _selectedCustomer is null but we have widget.customerId
-                    CustomerModel? initialCustomer = _selectedCustomer;
-                    if (initialCustomer == null && widget.customerId != null) {
-                      initialCustomer = customers.where((c) => c.id == widget.customerId).firstOrNull;
-                    }
+                    final activeCustomers = customers.where((c) => !c.isDeleted).toList();
+                    final targetId = _selectedCustomer?.id ?? widget.customerId;
+                    final matchedCustomer = activeCustomers.where((c) => c.id == targetId).firstOrNull;
 
                     return DropdownButtonFormField<CustomerModel>(
                       decoration: const InputDecoration(
                         labelText: 'Customer',
                         border: OutlineInputBorder(),
                       ),
-                      value: initialCustomer,
-                      items: customers.map((c) {
+                      value: matchedCustomer,
+                      items: activeCustomers.map((c) {
                         return DropdownMenuItem(
                           value: c,
                           child: Text(c.name),

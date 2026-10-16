@@ -29,7 +29,7 @@ class _CreateInvoiceScreenState extends ConsumerState<CreateInvoiceScreen> {
   final _formKey = GlobalKey<FormState>();
   final _notesController = TextEditingController();
   
-  CustomerModel? _selectedCustomer;
+  String? _selectedCustomerId;
   final List<InvoiceItem> _items = [];
   bool _isLoading = false;
 
@@ -49,12 +49,9 @@ class _CreateInvoiceScreenState extends ConsumerState<CreateInvoiceScreen> {
       final invoices = await ref.read(invoicesStreamProvider.future);
       final invoice = invoices.firstWhere((i) => i.id == widget.invoiceId);
 
-      final customers = await ref.read(customersStreamProvider.future);
-      final customerMatches = customers.where((c) => c.id == invoice.customerId).toList();
-
       if (mounted) {
         setState(() {
-          _selectedCustomer = customerMatches.isNotEmpty ? customerMatches.first : null;
+          _selectedCustomerId = invoice.customerId;
           _items.addAll(invoice.items);
           _notesController.text = invoice.notes ?? '';
         });
@@ -82,7 +79,7 @@ class _CreateInvoiceScreenState extends ConsumerState<CreateInvoiceScreen> {
 
   Future<void> _saveInvoice() async {
     if (!_formKey.currentState!.validate()) return;
-    if (_selectedCustomer == null) {
+    if (_selectedCustomerId == null) {
       ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Please select a customer')));
       return;
     }
@@ -121,7 +118,7 @@ class _CreateInvoiceScreenState extends ConsumerState<CreateInvoiceScreen> {
       
       final invoice = InvoiceModel(
         id: id,
-        customerId: _selectedCustomer!.id,
+        customerId: _selectedCustomerId!,
         orderId: 'dummy_order_id', // Would normally come from converting an order
         invoiceNumber: widget.invoiceId != null ? 'existing' : invoiceNumber, // Will be overridden correctly below
         invoiceDate: now,
@@ -148,8 +145,11 @@ class _CreateInvoiceScreenState extends ConsumerState<CreateInvoiceScreen> {
         }
         
         try {
-          final newOutstanding = _selectedCustomer!.currentOutstanding + _total;
-          await customerRepo.update(_selectedCustomer!.id, {'currentOutstanding': newOutstanding});
+          final currentCust = await customerRepo.getById(_selectedCustomerId!);
+          if (currentCust != null) {
+            final newOutstanding = currentCust.currentOutstanding + _total;
+            await customerRepo.update(_selectedCustomerId!, {'currentOutstanding': newOutstanding});
+          }
         } catch (e) {
           debugPrint('Error updating customer outstanding: $e');
         }
@@ -209,9 +209,12 @@ class _CreateInvoiceScreenState extends ConsumerState<CreateInvoiceScreen> {
         await repository.update(id, invoiceMap);
         
         try {
-          final diff = _total - oldInvoice.total;
-          final newOutstanding = (_selectedCustomer!.currentOutstanding + diff).clamp(0.0, double.infinity);
-          await customerRepo.update(_selectedCustomer!.id, {'currentOutstanding': newOutstanding});
+          final currentCust = await customerRepo.getById(_selectedCustomerId!);
+          if (currentCust != null) {
+            final diff = _total - oldInvoice.total;
+            final newOutstanding = (currentCust.currentOutstanding + diff).clamp(0.0, double.infinity);
+            await customerRepo.update(_selectedCustomerId!, {'currentOutstanding': newOutstanding});
+          }
         } catch (e) {
           debugPrint('Error updating customer outstanding on edit: $e');
         }
@@ -290,14 +293,17 @@ class _CreateInvoiceScreenState extends ConsumerState<CreateInvoiceScreen> {
   }
 
   void _showAddItemDialog() {
-    if (_selectedCustomer == null) {
+    if (_selectedCustomerId == null) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Please select a customer first to load pricing.')),
       );
       return;
     }
 
-    if (_selectedCustomer!.productPrices == null || _selectedCustomer!.productPrices!.isEmpty) {
+    final customers = ref.read(customersStreamProvider).value ?? [];
+    final customer = customers.where((c) => c.id == _selectedCustomerId).firstOrNull;
+
+    if (customer == null || customer.productPrices == null || customer.productPrices!.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Please configure product prices for this customer first.')),
       );
@@ -338,7 +344,7 @@ class _CreateInvoiceScreenState extends ConsumerState<CreateInvoiceScreen> {
                         itemCount: products.length,
                         itemBuilder: (context, index) {
                           final p = products[index];
-                          final price = _selectedCustomer!.productPrices?[p.id] ?? 0.0;
+                          final price = customer.productPrices?[p.id] ?? 0.0;
                           return ListTile(
                             title: Text(p.name),
                             subtitle: Text(p.currentStock > 0 
@@ -346,7 +352,7 @@ class _CreateInvoiceScreenState extends ConsumerState<CreateInvoiceScreen> {
                                 : '₹${price.toStringAsFixed(2)}'),
                             onTap: () {
                               Navigator.pop(context);
-                              _addProduct(p);
+                              _addProduct(p, customer);
                             },
                           );
                         },
@@ -362,14 +368,14 @@ class _CreateInvoiceScreenState extends ConsumerState<CreateInvoiceScreen> {
     );
   }
 
-  void _addProduct(ProductModel product) {
+  void _addProduct(ProductModel product, CustomerModel customer) {
     final existingIndex = _items.indexWhere((i) => i.productId == product.id);
     if (existingIndex >= 0) {
       final item = _items[existingIndex];
       _updateItemQuantity(existingIndex, item.quantity + 1);
     } else {
       final qty = 1.0;
-      final price = _selectedCustomer!.productPrices?[product.id] ?? 0.0;
+      final price = customer.productPrices?[product.id] ?? 0.0;
       final subtotal = price * qty;
       final gstAmount = (subtotal * (product.cgst + product.sgst) / 100) + (product.igst * qty);
 
@@ -435,20 +441,25 @@ class _CreateInvoiceScreenState extends ConsumerState<CreateInvoiceScreen> {
                 loading: () => const CircularProgressIndicator(),
                 error: (e, st) => Text('Error loading customers: $e'),
                 data: (customers) {
-                  return DropdownButtonFormField<CustomerModel>(
+                  final activeCustomers = customers.where((c) => !c.isDeleted).toList();
+                  final hasSelectedCustomer = activeCustomers.any((c) => c.id == _selectedCustomerId);
+
+                  return DropdownButtonFormField<String>(
                     decoration: const InputDecoration(
                       labelText: 'Customer',
                       border: OutlineInputBorder(),
                     ),
-                    value: _selectedCustomer,
-                    items: customers.map((c) {
-                      return DropdownMenuItem(
-                        value: c,
+                    value: hasSelectedCustomer ? _selectedCustomerId : null,
+                    items: activeCustomers.map((c) {
+                      return DropdownMenuItem<String>(
+                        value: c.id,
                         child: Text(c.name),
                       );
                     }).toList(),
                     onChanged: (val) {
-                      setState(() => _selectedCustomer = val);
+                      setState(() {
+                        _selectedCustomerId = val;
+                      });
                     },
                     validator: (val) => val == null ? 'Required' : null,
                   );

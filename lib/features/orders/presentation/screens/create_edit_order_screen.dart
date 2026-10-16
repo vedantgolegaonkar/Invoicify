@@ -576,13 +576,16 @@ class _CreateEditOrderScreenState extends ConsumerState<CreateEditOrderScreen> {
                 loading: () => const CircularProgressIndicator(),
                 error: (e, st) => Text('Error loading customers: $e'),
                 data: (customers) {
+                  final activeCustomers = customers.where((c) => !c.isDeleted).toList();
+                  final matchedCustomer = activeCustomers.where((c) => c.id == _selectedCustomer?.id).firstOrNull;
+
                   return DropdownButtonFormField<CustomerModel>(
                     decoration: const InputDecoration(
                       labelText: 'Customer',
                       border: OutlineInputBorder(),
                     ),
-                    value: _selectedCustomer,
-                    items: customers.map((c) {
+                    value: matchedCustomer,
+                    items: activeCustomers.map((c) {
                       return DropdownMenuItem(
                         value: c,
                         child: Text(c.name),
