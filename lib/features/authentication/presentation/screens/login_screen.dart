@@ -102,13 +102,17 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       body: SafeArea(
-        child: CustomScrollView(
-          slivers: [
-            SliverFillRemaining(
-              hasScrollBody: false,
-              child: _showPinScreen ? _buildPinScreen() : _buildMobileScreen(),
-            ),
-          ],
+        child: LayoutBuilder(
+          builder: (context, constraints) {
+            return SingleChildScrollView(
+              child: ConstrainedBox(
+                constraints: BoxConstraints(minHeight: constraints.maxHeight),
+                child: IntrinsicHeight(
+                  child: _showPinScreen ? _buildPinScreen() : _buildMobileScreen(),
+                ),
+              ),
+            );
+          },
         ),
       ),
     );

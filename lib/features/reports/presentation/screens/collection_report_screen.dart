@@ -78,35 +78,55 @@ class _CollectionReportScreenState extends ConsumerState<CollectionReportScreen>
                       Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
-                          Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              const Text('Total Billed', style: TextStyle(color: AppColors.textSecondary, fontSize: 11)),
-                              const SizedBox(height: 2),
-                              Text('₹${totalBilledOverall.toStringAsFixed(2)}', style: const TextStyle(fontSize: 15, fontWeight: FontWeight.bold)),
-                            ],
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                const Text('Total Billed', style: TextStyle(color: AppColors.textSecondary, fontSize: 11), overflow: TextOverflow.ellipsis),
+                                const SizedBox(height: 2),
+                                FittedBox(
+                                  fit: BoxFit.scaleDown,
+                                  alignment: Alignment.centerLeft,
+                                  child: Text('₹${totalBilledOverall.toStringAsFixed(2)}', style: const TextStyle(fontSize: 15, fontWeight: FontWeight.bold)),
+                                ),
+                              ],
+                            ),
                           ),
-                          Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              const Text('Total Collected', style: TextStyle(color: AppColors.textSecondary, fontSize: 11)),
-                              const SizedBox(height: 2),
-                              Text(
-                                '₹${totalCollectedOverall.toStringAsFixed(2)}',
-                                style: const TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: AppColors.success),
-                              ),
-                            ],
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                const Text('Total Collected', style: TextStyle(color: AppColors.textSecondary, fontSize: 11), overflow: TextOverflow.ellipsis),
+                                const SizedBox(height: 2),
+                                FittedBox(
+                                  fit: BoxFit.scaleDown,
+                                  alignment: Alignment.centerLeft,
+                                  child: Text(
+                                    '₹${totalCollectedOverall.toStringAsFixed(2)}',
+                                    style: const TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: AppColors.success),
+                                  ),
+                                ),
+                              ],
+                            ),
                           ),
-                          Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              const Text('Pending Collection', style: TextStyle(color: AppColors.textSecondary, fontSize: 11)),
-                              const SizedBox(height: 2),
-                              Text(
-                                '₹${totalPendingOverall.toStringAsFixed(2)}',
-                                style: const TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: AppColors.error),
-                              ),
-                            ],
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                const Text('Pending Due', style: TextStyle(color: AppColors.textSecondary, fontSize: 11), overflow: TextOverflow.ellipsis),
+                                const SizedBox(height: 2),
+                                FittedBox(
+                                  fit: BoxFit.scaleDown,
+                                  alignment: Alignment.centerLeft,
+                                  child: Text(
+                                    '₹${totalPendingOverall.toStringAsFixed(2)}',
+                                    style: const TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: AppColors.error),
+                                  ),
+                                ),
+                              ],
+                            ),
                           ),
                         ],
                       ),

@@ -155,10 +155,14 @@ class _OutstandingReportScreenState extends ConsumerState<OutstandingReportScree
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        Text(
-                          'Sort: ${_sortByHighest ? "Highest Outstanding First" : "Lowest Outstanding First"}',
-                          style: const TextStyle(color: Colors.white70, fontSize: 13),
+                        Expanded(
+                          child: Text(
+                            'Sort: ${_sortByHighest ? "Highest Due" : "Lowest Due"}',
+                            style: const TextStyle(color: Colors.white70, fontSize: 13),
+                            overflow: TextOverflow.ellipsis,
+                          ),
                         ),
+                        const SizedBox(width: 8),
                         InkWell(
                           onTap: () {
                             setState(() {
@@ -317,46 +321,51 @@ class _OutstandingReportScreenState extends ConsumerState<OutstandingReportScree
                                               ),
                                             ),
                                             const SizedBox(width: 8),
-                                            Column(
-                                              crossAxisAlignment: CrossAxisAlignment.end,
-                                              children: [
-                                                Text(
-                                                  '₹${item.outstanding.toStringAsFixed(2)}',
-                                                  style: const TextStyle(
-                                                    color: AppColors.error,
-                                                    fontWeight: FontWeight.bold,
-                                                    fontSize: 15,
+                                            FittedBox(
+                                              fit: BoxFit.scaleDown,
+                                              alignment: Alignment.centerRight,
+                                              child: Column(
+                                                crossAxisAlignment: CrossAxisAlignment.end,
+                                                children: [
+                                                  Text(
+                                                    '₹${item.outstanding.toStringAsFixed(2)}',
+                                                    style: const TextStyle(
+                                                      color: AppColors.error,
+                                                      fontWeight: FontWeight.bold,
+                                                      fontSize: 15,
+                                                    ),
                                                   ),
-                                                ),
-                                                const SizedBox(height: 4),
-                                                Row(
-                                                  children: [
-                                                    // Record Payment Button
-                                                    IconButton(
-                                                      icon: const Icon(Icons.payment, size: 18, color: AppColors.success),
-                                                      padding: EdgeInsets.zero,
-                                                      constraints: const BoxConstraints(),
-                                                      onPressed: () => context.push(
-                                                        '/payments/record?customerId=${item.customer.id}&amount=${item.outstanding}',
+                                                  const SizedBox(height: 4),
+                                                  Row(
+                                                    mainAxisSize: MainAxisSize.min,
+                                                    children: [
+                                                      // Record Payment Button
+                                                      IconButton(
+                                                        icon: const Icon(Icons.payment, size: 18, color: AppColors.success),
+                                                        padding: EdgeInsets.zero,
+                                                        constraints: const BoxConstraints(),
+                                                        onPressed: () => context.push(
+                                                          '/payments/record?customerId=${item.customer.id}&amount=${item.outstanding}',
+                                                        ),
+                                                        tooltip: 'Record Payment',
                                                       ),
-                                                      tooltip: 'Record Payment',
-                                                    ),
-                                                    const SizedBox(width: 14),
-                                                    // WhatsApp Reminder Button
-                                                    IconButton(
-                                                      icon: const Icon(Icons.share, size: 18, color: Color(0xFF25D366)),
-                                                      padding: EdgeInsets.zero,
-                                                      constraints: const BoxConstraints(),
-                                                      onPressed: () => _shareWhatsAppReminder(
-                                                        item.customer,
-                                                        item.outstanding,
-                                                        businessName,
+                                                      const SizedBox(width: 14),
+                                                      // WhatsApp Reminder Button
+                                                      IconButton(
+                                                        icon: const Icon(Icons.share, size: 18, color: Color(0xFF25D366)),
+                                                        padding: EdgeInsets.zero,
+                                                        constraints: const BoxConstraints(),
+                                                        onPressed: () => _shareWhatsAppReminder(
+                                                          item.customer,
+                                                          item.outstanding,
+                                                          businessName,
+                                                        ),
+                                                        tooltip: 'Send WhatsApp Reminder',
                                                       ),
-                                                      tooltip: 'Send WhatsApp Reminder',
-                                                    ),
-                                                  ],
-                                                )
-                                              ],
+                                                    ],
+                                                  )
+                                                ],
+                                              ),
                                             )
                                           ],
                                         ),

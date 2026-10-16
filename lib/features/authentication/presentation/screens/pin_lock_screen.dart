@@ -61,62 +61,67 @@ class _PinLockScreenState extends ConsumerState<PinLockScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       body: SafeArea(
-        child: CustomScrollView(
-          slivers: [
-            SliverFillRemaining(
-              hasScrollBody: false,
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  const Icon(Icons.lock_outline, size: 64),
-                  const SizedBox(height: 24),
-                  Text(
-                    'Enter PIN',
-                    style: Theme.of(context).textTheme.headlineMedium,
-                  ),
-                  const SizedBox(height: 32),
-                  Row(
+        child: LayoutBuilder(
+          builder: (context, constraints) {
+            return SingleChildScrollView(
+              child: ConstrainedBox(
+                constraints: BoxConstraints(minHeight: constraints.maxHeight),
+                child: IntrinsicHeight(
+                  child: Column(
                     mainAxisAlignment: MainAxisAlignment.center,
-                    children: List.generate(4, (index) {
-                      return Container(
-                        margin: const EdgeInsets.symmetric(horizontal: 12),
-                        width: 20,
-                        height: 20,
-                        decoration: BoxDecoration(
-                          shape: BoxShape.circle,
-                          color: index < _pin.length
-                              ? Theme.of(context).primaryColor
-                              : Colors.grey.shade300,
+                    children: [
+                      const SizedBox(height: 24),
+                      const Icon(Icons.lock_outline, size: 64),
+                      const SizedBox(height: 24),
+                      Text(
+                        'Enter PIN',
+                        style: Theme.of(context).textTheme.headlineMedium,
+                      ),
+                      const SizedBox(height: 32),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: List.generate(4, (index) {
+                          return Container(
+                            margin: const EdgeInsets.symmetric(horizontal: 12),
+                            width: 20,
+                            height: 20,
+                            decoration: BoxDecoration(
+                              shape: BoxShape.circle,
+                              color: index < _pin.length
+                                  ? Theme.of(context).primaryColor
+                                  : Colors.grey.shade300,
+                            ),
+                          );
+                        }),
+                      ),
+                      if (_errorMessage != null) ...[
+                        const SizedBox(height: 16),
+                        Text(
+                          _errorMessage!,
+                          style: const TextStyle(color: Colors.red),
                         ),
-                      );
-                    }),
+                      ],
+                      if (_isLoading) ...[
+                        const SizedBox(height: 16),
+                        const CircularProgressIndicator(),
+                      ],
+                      const SizedBox(height: 32),
+                      _buildNumpad(),
+                      const SizedBox(height: 16),
+                      TextButton(
+                        onPressed: () {
+                          ref.read(authNotifierProvider.notifier).logout();
+                          context.go('/login');
+                        },
+                        child: const Text('Logout'),
+                      ),
+                      const SizedBox(height: 24),
+                    ],
                   ),
-                  if (_errorMessage != null) ...[
-                    const SizedBox(height: 16),
-                    Text(
-                      _errorMessage!,
-                      style: const TextStyle(color: Colors.red),
-                    ),
-                  ],
-                  if (_isLoading) ...[
-                    const SizedBox(height: 16),
-                    const CircularProgressIndicator(),
-                  ],
-                  const SizedBox(height: 32),
-                  _buildNumpad(),
-                  const SizedBox(height: 16),
-                  TextButton(
-                    onPressed: () {
-                      ref.read(authNotifierProvider.notifier).logout();
-                      context.go('/login');
-                    },
-                    child: const Text('Logout'),
-                  ),
-                  const SizedBox(height: 32),
-                ],
+                ),
               ),
-            ),
-          ],
+            );
+          },
         ),
       ),
     );

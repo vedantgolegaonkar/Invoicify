@@ -498,13 +498,23 @@ class _CreateInvoiceScreenState extends ConsumerState<CreateInvoiceScreen> {
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                Text(item.productName, style: const TextStyle(fontWeight: FontWeight.bold)),
+                                Text(
+                                  item.productName, 
+                                  style: const TextStyle(fontWeight: FontWeight.bold),
+                                  maxLines: 2,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
                                 const SizedBox(height: 4),
-                                Text('₹${item.unitPrice} / unit', style: const TextStyle(color: Colors.grey, fontSize: 12)),
+                                Text(
+                                  '₹${item.unitPrice} / unit', 
+                                  style: const TextStyle(color: Colors.grey, fontSize: 12),
+                                  overflow: TextOverflow.ellipsis,
+                                ),
                               ],
                             ),
                           ),
                           Row(
+                            mainAxisSize: MainAxisSize.min,
                             children: [
                               IconButton(
                                 icon: const Icon(Icons.remove_circle_outline, color: Colors.blue),
@@ -513,8 +523,11 @@ class _CreateInvoiceScreenState extends ConsumerState<CreateInvoiceScreen> {
                                 padding: const EdgeInsets.all(4),
                               ),
                               Padding(
-                                padding: const EdgeInsets.symmetric(horizontal: 8.0),
-                                child: Text('${item.quantity.toInt()}', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+                                padding: const EdgeInsets.symmetric(horizontal: 4.0),
+                                child: Text(
+                                  '${item.quantity.toInt()}', 
+                                  style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
+                                ),
                               ),
                               IconButton(
                                 icon: const Icon(Icons.add_circle_outline, color: Colors.blue),
@@ -524,11 +537,17 @@ class _CreateInvoiceScreenState extends ConsumerState<CreateInvoiceScreen> {
                               ),
                             ],
                           ),
-                          const SizedBox(width: 16),
+                          const SizedBox(width: 8),
                           Column(
                             crossAxisAlignment: CrossAxisAlignment.end,
                             children: [
-                              Text('₹${item.total.toStringAsFixed(2)}', style: const TextStyle(fontWeight: FontWeight.bold)),
+                              FittedBox(
+                                fit: BoxFit.scaleDown,
+                                child: Text(
+                                  '₹${item.total.toStringAsFixed(2)}', 
+                                  style: const TextStyle(fontWeight: FontWeight.bold),
+                                ),
+                              ),
                               const SizedBox(height: 4),
                               InkWell(
                                 onTap: () => setState(() => _items.removeAt(index)),

@@ -231,31 +231,70 @@ class _GstReportScreenState extends ConsumerState<GstReportScreen> {
                             Row(
                               mainAxisAlignment: MainAxisAlignment.spaceBetween,
                               children: [
-                                Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    const Text('CGST (Central Tax)', style: TextStyle(color: AppColors.textSecondary, fontSize: 11)),
-                                    const SizedBox(height: 2),
-                                    Text('₹${totalCgst.toStringAsFixed(2)}', style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold)),
-                                  ],
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      const Text(
+                                        'CGST', 
+                                        style: TextStyle(color: AppColors.textSecondary, fontSize: 11),
+                                        overflow: TextOverflow.ellipsis,
+                                      ),
+                                      const SizedBox(height: 2),
+                                      FittedBox(
+                                        fit: BoxFit.scaleDown,
+                                        alignment: Alignment.centerLeft,
+                                        child: Text(
+                                          '₹${totalCgst.toStringAsFixed(2)}', 
+                                          style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
                                 ),
-                                Container(width: 1, height: 24, color: Colors.grey.shade300),
-                                Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    const Text('SGST (State Tax)', style: TextStyle(color: AppColors.textSecondary, fontSize: 11)),
-                                    const SizedBox(height: 2),
-                                    Text('₹${totalSgst.toStringAsFixed(2)}', style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold)),
-                                  ],
+                                Container(width: 1, height: 24, color: Colors.grey.shade300, margin: const EdgeInsets.symmetric(horizontal: 6)),
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      const Text(
+                                        'SGST', 
+                                        style: TextStyle(color: AppColors.textSecondary, fontSize: 11),
+                                        overflow: TextOverflow.ellipsis,
+                                      ),
+                                      const SizedBox(height: 2),
+                                      FittedBox(
+                                        fit: BoxFit.scaleDown,
+                                        alignment: Alignment.centerLeft,
+                                        child: Text(
+                                          '₹${totalSgst.toStringAsFixed(2)}', 
+                                          style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
                                 ),
-                                Container(width: 1, height: 24, color: Colors.grey.shade300),
-                                Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    const Text('Taxable Turnover', style: TextStyle(color: AppColors.textSecondary, fontSize: 11)),
-                                    const SizedBox(height: 2),
-                                    Text('₹${totalTaxableValue.toStringAsFixed(2)}', style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold)),
-                                  ],
+                                Container(width: 1, height: 24, color: Colors.grey.shade300, margin: const EdgeInsets.symmetric(horizontal: 6)),
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      const Text(
+                                        'Turnover', 
+                                        style: TextStyle(color: AppColors.textSecondary, fontSize: 11),
+                                        overflow: TextOverflow.ellipsis,
+                                      ),
+                                      const SizedBox(height: 2),
+                                      FittedBox(
+                                        fit: BoxFit.scaleDown,
+                                        alignment: Alignment.centerLeft,
+                                        child: Text(
+                                          '₹${totalTaxableValue.toStringAsFixed(2)}', 
+                                          style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
                                 ),
                               ],
                             ),

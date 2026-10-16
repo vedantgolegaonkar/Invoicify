@@ -337,20 +337,26 @@ class InvoiceDetailsScreen extends ConsumerWidget {
                               Row(
                                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                                 children: [
-                                  const Text(
-                                    'Outstanding Amount',
-                                    style: TextStyle(
-                                      fontWeight: FontWeight.bold, 
-                                      fontSize: 16,
-                                      color: AppColors.error,
+                                  const Expanded(
+                                    child: Text(
+                                      'Outstanding Amount',
+                                      style: TextStyle(
+                                        fontWeight: FontWeight.bold, 
+                                        fontSize: 16,
+                                        color: AppColors.error,
+                                      ),
                                     ),
                                   ),
-                                  Text(
-                                    '₹${outstanding.toStringAsFixed(2)}',
-                                    style: const TextStyle(
-                                      fontWeight: FontWeight.bold, 
-                                      fontSize: 22,
-                                      color: AppColors.error,
+                                  const SizedBox(width: 8),
+                                  FittedBox(
+                                    fit: BoxFit.scaleDown,
+                                    child: Text(
+                                      '₹${outstanding.toStringAsFixed(2)}',
+                                      style: const TextStyle(
+                                        fontWeight: FontWeight.bold, 
+                                        fontSize: 22,
+                                        color: AppColors.error,
+                                      ),
                                     ),
                                   ),
                                 ],
@@ -480,19 +486,25 @@ class InvoiceDetailsScreen extends ConsumerWidget {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
-        Text(
-          label,
-          style: const TextStyle(
-            color: AppColors.textSecondary, 
-            fontSize: 15,
+        Expanded(
+          child: Text(
+            label,
+            style: const TextStyle(
+              color: AppColors.textSecondary, 
+              fontSize: 15,
+            ),
           ),
         ),
-        Text(
-          '₹${value.toStringAsFixed(2)}',
-          style: TextStyle(
-            fontWeight: isBold ? FontWeight.bold : FontWeight.w600, 
-            fontSize: 15,
-            color: valueColor,
+        const SizedBox(width: 8),
+        FittedBox(
+          fit: BoxFit.scaleDown,
+          child: Text(
+            '₹${value.toStringAsFixed(2)}',
+            style: TextStyle(
+              fontWeight: isBold ? FontWeight.bold : FontWeight.w600, 
+              fontSize: 15,
+              color: valueColor,
+            ),
           ),
         ),
       ],

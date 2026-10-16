@@ -327,20 +327,26 @@ class OrderDetailsScreen extends ConsumerWidget {
                               Row(
                                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                                 children: [
-                                  const Text(
-                                    'Total Amount',
-                                    style: TextStyle(
-                                      fontWeight: FontWeight.bold, 
-                                      fontSize: 16,
-                                      color: AppColors.textPrimary,
+                                  const Expanded(
+                                    child: Text(
+                                      'Total Amount',
+                                      style: TextStyle(
+                                        fontWeight: FontWeight.bold, 
+                                        fontSize: 16,
+                                        color: AppColors.textPrimary,
+                                      ),
                                     ),
                                   ),
-                                  Text(
-                                    '₹${order.total.toStringAsFixed(2)}',
-                                    style: const TextStyle(
-                                      fontWeight: FontWeight.bold, 
-                                      fontSize: 22,
-                                      color: AppColors.primary,
+                                  const SizedBox(width: 8),
+                                  FittedBox(
+                                    fit: BoxFit.scaleDown,
+                                    child: Text(
+                                      '₹${order.total.toStringAsFixed(2)}',
+                                      style: const TextStyle(
+                                        fontWeight: FontWeight.bold, 
+                                        fontSize: 22,
+                                        color: AppColors.primary,
+                                      ),
                                     ),
                                   ),
                                 ],
@@ -555,19 +561,25 @@ class OrderDetailsScreen extends ConsumerWidget {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
-        Text(
-          label,
-          style: const TextStyle(
-            color: AppColors.textSecondary, 
-            fontSize: 15,
+        Expanded(
+          child: Text(
+            label,
+            style: const TextStyle(
+              color: AppColors.textSecondary, 
+              fontSize: 15,
+            ),
           ),
         ),
-        Text(
-          '₹${value.toStringAsFixed(2)}',
-          style: const TextStyle(
-            fontWeight: FontWeight.w600, 
-            fontSize: 15,
-            color: AppColors.textPrimary,
+        const SizedBox(width: 8),
+        FittedBox(
+          fit: BoxFit.scaleDown,
+          child: Text(
+            '₹${value.toStringAsFixed(2)}',
+            style: const TextStyle(
+              fontWeight: FontWeight.w600, 
+              fontSize: 15,
+              color: AppColors.textPrimary,
+            ),
           ),
         ),
       ],
