@@ -32,15 +32,16 @@ class InvoiceDetailsScreen extends ConsumerWidget {
       loading: () => Scaffold(appBar: AppBar(title: const Text('Invoice Details')), body: const Center(child: CircularProgressIndicator())),
       error: (err, st) => Scaffold(appBar: AppBar(title: const Text('Invoice Details')), body: Center(child: Text('Error: $err'))),
       data: (invoices) {
-          final invoice = invoices.firstWhere(
-            (i) => i.id == invoiceId, 
-            orElse: () => throw Exception('Invoice not found'),
-          );
+          final invoiceMatches = invoices.where((i) => i.id == invoiceId);
+          if (invoiceMatches.isEmpty) {
+            return Scaffold(
+              appBar: AppBar(title: const Text('Invoice Details')),
+              body: const Center(child: Text('Invoice not found or deleted.')),
+            );
+          }
+          final invoice = invoiceMatches.first;
 
-          final customer = customersAsync.value?.firstWhere(
-            (c) => c.id == invoice.customerId,
-            orElse: () => throw Exception('Customer not found')
-          );
+          final customer = customersAsync.value?.where((c) => c.id == invoice.customerId).firstOrNull;
           
           final orders = ordersAsync.value ?? [];
           final isCancelled = orders.any((o) => o.id == invoice.orderId && o.status.name == 'cancelled');

@@ -138,114 +138,137 @@ class _CreateInvoiceScreenState extends ConsumerState<CreateInvoiceScreen> {
 
       if (widget.invoiceId == null) {
         await repository.create(invoice, id);
+        
         if (settings != null) {
-          await settingsRepo.update('default', {'invoiceNextNumber': settings.invoiceNextNumber + 1});
+          try {
+            await settingsRepo.update('default', {'invoiceNextNumber': settings.invoiceNextNumber + 1});
+          } catch (e) {
+            debugPrint('Error updating next invoice number: $e');
+          }
         }
-        final newOutstanding = _selectedCustomer!.currentOutstanding + _total;
-        await customerRepo.update(_selectedCustomer!.id, {'currentOutstanding': newOutstanding});
+        
+        try {
+          final newOutstanding = _selectedCustomer!.currentOutstanding + _total;
+          await customerRepo.update(_selectedCustomer!.id, {'currentOutstanding': newOutstanding});
+        } catch (e) {
+          debugPrint('Error updating customer outstanding: $e');
+        }
         
         if (invoice.orderId == 'dummy_order_id') {
-          final productRepo = ref.read(productRepositoryProvider);
-          final inventoryRepo = ref.read(inventoryRepositoryProvider);
-          final currentProducts = await productRepo.getAll();
+          try {
+            final productRepo = ref.read(productRepositoryProvider);
+            final inventoryRepo = ref.read(inventoryRepositoryProvider);
+            final currentProducts = await productRepo.getAll();
 
-          Map<String, double> newQuantities = {};
-          for (var item in _items) {
-            newQuantities[item.productId] = (newQuantities[item.productId] ?? 0) + item.quantity;
-          }
-          
-          for (var entry in newQuantities.entries) {
-            final pId = entry.key;
-            final qty = entry.value;
+            Map<String, double> newQuantities = {};
+            for (var item in _items) {
+              newQuantities[item.productId] = (newQuantities[item.productId] ?? 0) + item.quantity;
+            }
             
-            final productMatches = currentProducts.where((p) => p.id == pId);
-            if (productMatches.isNotEmpty) {
-              final product = productMatches.first;
-              final previousStock = product.currentStock;
-              final newStock = previousStock - qty;
+            for (var entry in newQuantities.entries) {
+              final pId = entry.key;
+              final qty = entry.value;
               
-              try {
-                productRepo.update(pId, {'currentStock': newStock});
-                final txnId = const Uuid().v4();
-                final transaction = InventoryTransactionModel(
-                  id: txnId,
-                  productId: pId,
-                  type: TransactionType.stockOut,
-                  quantity: qty,
-                  previousStock: previousStock,
-                  newStock: newStock,
-                  remarks: 'Invoice Created: $invoiceNumber',
-                  createdAt: now,
-                  updatedAt: now,
-                );
-                inventoryRepo.create(transaction, txnId);
-              } catch (e) {
-                debugPrint('Error updating inventory: $e');
+              final productMatches = currentProducts.where((p) => p.id == pId);
+              if (productMatches.isNotEmpty) {
+                final product = productMatches.first;
+                final previousStock = product.currentStock;
+                final newStock = previousStock - qty;
+                
+                try {
+                  await productRepo.update(pId, {'currentStock': newStock});
+                  final txnId = const Uuid().v4();
+                  final transaction = InventoryTransactionModel(
+                    id: txnId,
+                    productId: pId,
+                    type: TransactionType.stockOut,
+                    quantity: qty,
+                    previousStock: previousStock,
+                    newStock: newStock,
+                    remarks: 'Invoice Created: $invoiceNumber',
+                    createdAt: now,
+                    updatedAt: now,
+                  );
+                  await inventoryRepo.create(transaction, txnId);
+                } catch (e) {
+                  debugPrint('Error updating inventory item $pId: $e');
+                }
               }
             }
+          } catch (e) {
+            debugPrint('Error in inventory sync: $e');
           }
         }
       } else {
         final oldInvoice = (ref.read(invoicesStreamProvider).value ?? []).firstWhere(
           (i) => i.id == widget.invoiceId,
-          orElse: () => invoice, // Fallback if not found for some reason
+          orElse: () => invoice,
         );
         final invoiceMap = invoice.toMap();
         invoiceMap['invoiceNumber'] = oldInvoice.invoiceNumber;
         await repository.update(id, invoiceMap);
-        final diff = _total - oldInvoice.total;
-        final newOutstanding = (_selectedCustomer!.currentOutstanding + diff).clamp(0.0, double.infinity);
-        await customerRepo.update(_selectedCustomer!.id, {'currentOutstanding': newOutstanding});
+        
+        try {
+          final diff = _total - oldInvoice.total;
+          final newOutstanding = (_selectedCustomer!.currentOutstanding + diff).clamp(0.0, double.infinity);
+          await customerRepo.update(_selectedCustomer!.id, {'currentOutstanding': newOutstanding});
+        } catch (e) {
+          debugPrint('Error updating customer outstanding on edit: $e');
+        }
         
         if (invoice.orderId == 'dummy_order_id') {
-          final productRepo = ref.read(productRepositoryProvider);
-          final inventoryRepo = ref.read(inventoryRepositoryProvider);
-          final currentProducts = await productRepo.getAll();
-          
-          Map<String, double> oldQuantities = {};
-          for (var item in oldInvoice.items) {
-            oldQuantities[item.productId] = (oldQuantities[item.productId] ?? 0) + item.quantity;
-          }
-          
-          Map<String, double> newQuantities = {};
-          for (var item in _items) {
-            newQuantities[item.productId] = (newQuantities[item.productId] ?? 0) + item.quantity;
-          }
-
-          final allProductIds = {...oldQuantities.keys, ...newQuantities.keys};
-
-          for (var pId in allProductIds) {
-            final oldQ = oldQuantities[pId] ?? 0;
-            final newQ = newQuantities[pId] ?? 0;
-            final delta = newQ - oldQ;
+          try {
+            final productRepo = ref.read(productRepositoryProvider);
+            final inventoryRepo = ref.read(inventoryRepositoryProvider);
+            final currentProducts = await productRepo.getAll();
             
-            if (delta != 0) {
-              final productMatches = currentProducts.where((p) => p.id == pId);
-              if (productMatches.isNotEmpty) {
-                final product = productMatches.first;
-                final previousStock = product.currentStock;
-                final newStock = previousStock - delta;
-                
-                try {
-                  productRepo.update(pId, {'currentStock': newStock});
-                  final txnId = const Uuid().v4();
-                  final transaction = InventoryTransactionModel(
-                    id: txnId,
-                    productId: pId,
-                    type: delta > 0 ? TransactionType.stockOut : TransactionType.stockIn,
-                    quantity: delta.abs(),
-                    previousStock: previousStock,
-                    newStock: newStock,
-                    remarks: 'Invoice Updated: ${oldInvoice.invoiceNumber}',
-                    createdAt: now,
-                    updatedAt: now,
-                  );
-                  inventoryRepo.create(transaction, txnId);
-                } catch (e) {
-                  debugPrint('Error updating inventory: $e');
+            Map<String, double> oldQuantities = {};
+            for (var item in oldInvoice.items) {
+              oldQuantities[item.productId] = (oldQuantities[item.productId] ?? 0) + item.quantity;
+            }
+            
+            Map<String, double> newQuantities = {};
+            for (var item in _items) {
+              newQuantities[item.productId] = (newQuantities[item.productId] ?? 0) + item.quantity;
+            }
+
+            final allProductIds = {...oldQuantities.keys, ...newQuantities.keys};
+
+            for (var pId in allProductIds) {
+              final oldQ = oldQuantities[pId] ?? 0;
+              final newQ = newQuantities[pId] ?? 0;
+              final delta = newQ - oldQ;
+              
+              if (delta != 0) {
+                final productMatches = currentProducts.where((p) => p.id == pId);
+                if (productMatches.isNotEmpty) {
+                  final product = productMatches.first;
+                  final previousStock = product.currentStock;
+                  final newStock = previousStock - delta;
+                  
+                  try {
+                    await productRepo.update(pId, {'currentStock': newStock});
+                    final txnId = const Uuid().v4();
+                    final transaction = InventoryTransactionModel(
+                      id: txnId,
+                      productId: pId,
+                      type: delta > 0 ? TransactionType.stockOut : TransactionType.stockIn,
+                      quantity: delta.abs(),
+                      previousStock: previousStock,
+                      newStock: newStock,
+                      remarks: 'Invoice Updated: ${oldInvoice.invoiceNumber}',
+                      createdAt: now,
+                      updatedAt: now,
+                    );
+                    await inventoryRepo.create(transaction, txnId);
+                  } catch (e) {
+                    debugPrint('Error updating inventory for item $pId on edit: $e');
+                  }
                 }
               }
             }
+          } catch (e) {
+            debugPrint('Error in inventory sync on edit: $e');
           }
         }
       }
