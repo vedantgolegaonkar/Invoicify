@@ -8,6 +8,11 @@ class BusinessModel extends Equatable {
   final String? fssaiNumber;
   final String address;
   final String phone;
+  final String? email;
+  final String? panNumber;
+  final String? msmeNumber;
+  final String? arnNumber;
+  final String? jurisdictionCity;
   final String? logoUrl;
   final String? signatureUrl;
   final String invoicePrefix;
@@ -31,6 +36,11 @@ class BusinessModel extends Equatable {
     this.fssaiNumber,
     required this.address,
     required this.phone,
+    this.email,
+    this.panNumber,
+    this.msmeNumber,
+    this.arnNumber,
+    this.jurisdictionCity,
     this.logoUrl,
     this.signatureUrl,
     required this.invoicePrefix,
@@ -53,6 +63,11 @@ class BusinessModel extends Equatable {
     String? fssaiNumber,
     String? address,
     String? phone,
+    String? email,
+    String? panNumber,
+    String? msmeNumber,
+    String? arnNumber,
+    String? jurisdictionCity,
     String? logoUrl,
     String? signatureUrl,
     String? invoicePrefix,
@@ -74,6 +89,11 @@ class BusinessModel extends Equatable {
       fssaiNumber: fssaiNumber ?? this.fssaiNumber,
       address: address ?? this.address,
       phone: phone ?? this.phone,
+      email: email ?? this.email,
+      panNumber: panNumber ?? this.panNumber,
+      msmeNumber: msmeNumber ?? this.msmeNumber,
+      arnNumber: arnNumber ?? this.arnNumber,
+      jurisdictionCity: jurisdictionCity ?? this.jurisdictionCity,
       logoUrl: logoUrl ?? this.logoUrl,
       signatureUrl: signatureUrl ?? this.signatureUrl,
       invoicePrefix: invoicePrefix ?? this.invoicePrefix,
@@ -98,6 +118,11 @@ class BusinessModel extends Equatable {
       'fssaiNumber': fssaiNumber,
       'address': address,
       'phone': phone,
+      'email': email,
+      'panNumber': panNumber,
+      'msmeNumber': msmeNumber,
+      'arnNumber': arnNumber,
+      'jurisdictionCity': jurisdictionCity,
       'logoUrl': logoUrl,
       'signatureUrl': signatureUrl,
       'invoicePrefix': invoicePrefix,
@@ -122,6 +147,11 @@ class BusinessModel extends Equatable {
       fssaiNumber: map['fssaiNumber'],
       address: map['address'] ?? '',
       phone: map['phone'] ?? '',
+      email: map['email'],
+      panNumber: map['panNumber'],
+      msmeNumber: map['msmeNumber'],
+      arnNumber: map['arnNumber'],
+      jurisdictionCity: map['jurisdictionCity'],
       logoUrl: map['logoUrl'],
       signatureUrl: map['signatureUrl'],
       invoicePrefix: map['invoicePrefix'] ?? '',
@@ -151,6 +181,11 @@ class BusinessModel extends Equatable {
         fssaiNumber,
         address,
         phone,
+        email,
+        panNumber,
+        msmeNumber,
+        arnNumber,
+        jurisdictionCity,
         logoUrl,
         signatureUrl,
         invoicePrefix,

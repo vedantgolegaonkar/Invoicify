@@ -23,6 +23,11 @@ class _BusinessProfileScreenState extends ConsumerState<BusinessProfileScreen> {
   final _gstCtrl = TextEditingController();
   final _fssaiCtrl = TextEditingController();
   final _phoneCtrl = TextEditingController();
+  final _emailCtrl = TextEditingController();
+  final _panCtrl = TextEditingController();
+  final _msmeCtrl = TextEditingController();
+  final _arnCtrl = TextEditingController();
+  final _jurisdictionCtrl = TextEditingController();
   final _addressCtrl = TextEditingController();
   final _bankNameCtrl = TextEditingController();
   final _bankAccountCtrl = TextEditingController();
@@ -41,6 +46,11 @@ class _BusinessProfileScreenState extends ConsumerState<BusinessProfileScreen> {
     _gstCtrl.dispose();
     _fssaiCtrl.dispose();
     _phoneCtrl.dispose();
+    _emailCtrl.dispose();
+    _panCtrl.dispose();
+    _msmeCtrl.dispose();
+    _arnCtrl.dispose();
+    _jurisdictionCtrl.dispose();
     _addressCtrl.dispose();
     _bankNameCtrl.dispose();
     _bankAccountCtrl.dispose();
@@ -58,6 +68,11 @@ class _BusinessProfileScreenState extends ConsumerState<BusinessProfileScreen> {
     _gstCtrl.text = biz.gstNumber ?? '';
     _fssaiCtrl.text = biz.fssaiNumber ?? '';
     _phoneCtrl.text = biz.phone;
+    _emailCtrl.text = biz.email ?? '';
+    _panCtrl.text = biz.panNumber ?? '';
+    _msmeCtrl.text = biz.msmeNumber ?? '';
+    _arnCtrl.text = biz.arnNumber ?? '';
+    _jurisdictionCtrl.text = biz.jurisdictionCity ?? '';
     _addressCtrl.text = biz.address;
     _bankNameCtrl.text = biz.bankName ?? '';
     _bankAccountCtrl.text = biz.bankAccount ?? '';
@@ -92,16 +107,28 @@ class _BusinessProfileScreenState extends ConsumerState<BusinessProfileScreen> {
       final repo = ref.read(businessRepositoryProvider);
       final now = DateTime.now();
 
+      final gstVal = _gstCtrl.text.trim().isEmpty ? null : _gstCtrl.text.trim().toUpperCase();
+      // Auto derive PAN from GST if PAN is empty (standard: chars 3 to 12)
+      String? panVal = _panCtrl.text.trim().isEmpty ? null : _panCtrl.text.trim().toUpperCase();
+      if (panVal == null && gstVal != null && gstVal.length >= 12) {
+        panVal = gstVal.substring(2, 12);
+      }
+
       if (_existing != null) {
         await repo.update(_existing!.id, {
           'businessName': _businessNameCtrl.text.trim(),
-          'gstNumber': _gstCtrl.text.trim().isEmpty ? null : _gstCtrl.text.trim(),
+          'gstNumber': gstVal,
           'fssaiNumber': _fssaiCtrl.text.trim().isEmpty ? null : _fssaiCtrl.text.trim(),
           'phone': _phoneCtrl.text.trim(),
+          'email': _emailCtrl.text.trim().isEmpty ? null : _emailCtrl.text.trim(),
+          'panNumber': panVal,
+          'msmeNumber': _msmeCtrl.text.trim().isEmpty ? null : _msmeCtrl.text.trim(),
+          'arnNumber': _arnCtrl.text.trim().isEmpty ? null : _arnCtrl.text.trim(),
+          'jurisdictionCity': _jurisdictionCtrl.text.trim().isEmpty ? null : _jurisdictionCtrl.text.trim(),
           'address': _addressCtrl.text.trim(),
           'bankName': _bankNameCtrl.text.trim().isEmpty ? null : _bankNameCtrl.text.trim(),
           'bankAccount': _bankAccountCtrl.text.trim().isEmpty ? null : _bankAccountCtrl.text.trim(),
-          'bankIfsc': _bankIfscCtrl.text.trim().isEmpty ? null : _bankIfscCtrl.text.trim(),
+          'bankIfsc': _bankIfscCtrl.text.trim().isEmpty ? null : _bankIfscCtrl.text.trim().toUpperCase(),
           'upiId': _upiIdCtrl.text.trim().isEmpty ? null : _upiIdCtrl.text.trim(),
           'termsAndConditions': _termsCtrl.text.trim().isEmpty ? null : _termsCtrl.text.trim(),
           'logoUrl': _logoUrl,
@@ -111,13 +138,18 @@ class _BusinessProfileScreenState extends ConsumerState<BusinessProfileScreen> {
         final newBiz = BusinessModel(
           id: id,
           businessName: _businessNameCtrl.text.trim(),
-          gstNumber: _gstCtrl.text.trim().isEmpty ? null : _gstCtrl.text.trim(),
+          gstNumber: gstVal,
           fssaiNumber: _fssaiCtrl.text.trim().isEmpty ? null : _fssaiCtrl.text.trim(),
           phone: _phoneCtrl.text.trim(),
+          email: _emailCtrl.text.trim().isEmpty ? null : _emailCtrl.text.trim(),
+          panNumber: panVal,
+          msmeNumber: _msmeCtrl.text.trim().isEmpty ? null : _msmeCtrl.text.trim(),
+          arnNumber: _arnCtrl.text.trim().isEmpty ? null : _arnCtrl.text.trim(),
+          jurisdictionCity: _jurisdictionCtrl.text.trim().isEmpty ? null : _jurisdictionCtrl.text.trim(),
           address: _addressCtrl.text.trim(),
           bankName: _bankNameCtrl.text.trim().isEmpty ? null : _bankNameCtrl.text.trim(),
           bankAccount: _bankAccountCtrl.text.trim().isEmpty ? null : _bankAccountCtrl.text.trim(),
-          bankIfsc: _bankIfscCtrl.text.trim().isEmpty ? null : _bankIfscCtrl.text.trim(),
+          bankIfsc: _bankIfscCtrl.text.trim().isEmpty ? null : _bankIfscCtrl.text.trim().toUpperCase(),
           upiId: _upiIdCtrl.text.trim().isEmpty ? null : _upiIdCtrl.text.trim(),
           termsAndConditions: _termsCtrl.text.trim().isEmpty ? null : _termsCtrl.text.trim(),
           logoUrl: _logoUrl,
@@ -217,6 +249,21 @@ class _BusinessProfileScreenState extends ConsumerState<BusinessProfileScreen> {
                   controller: _gstCtrl,
                 ),
                 CustomTextField(
+                  label: 'PAN Number',
+                  hint: 'e.g. AABCU9603R (auto-derived from GST if blank)',
+                  controller: _panCtrl,
+                ),
+                CustomTextField(
+                  label: 'ARN Number',
+                  hint: 'e.g. AA2703240012345 (optional)',
+                  controller: _arnCtrl,
+                ),
+                CustomTextField(
+                  label: 'MSME / Udyam Reg. No.',
+                  hint: 'e.g. UDYAM-MH-12-0012345 (optional)',
+                  controller: _msmeCtrl,
+                ),
+                CustomTextField(
                   label: 'FSSAI Number',
                   hint: 'Optional',
                   controller: _fssaiCtrl,
@@ -229,8 +276,19 @@ class _BusinessProfileScreenState extends ConsumerState<BusinessProfileScreen> {
                   validator: (v) => v == null || v.trim().isEmpty ? 'Required' : null,
                 ),
                 CustomTextField(
+                  label: 'Email Address',
+                  hint: 'e.g. contact@business.com',
+                  keyboardType: TextInputType.emailAddress,
+                  controller: _emailCtrl,
+                ),
+                CustomTextField(
+                  label: 'Jurisdiction City',
+                  hint: 'e.g. PUNE (defaults to City in address)',
+                  controller: _jurisdictionCtrl,
+                ),
+                CustomTextField(
                   label: 'Address *',
-                  hint: 'Full business address',
+                  hint: 'Full business address (MIDC, City, PIN, State)',
                   maxLines: 3,
                   controller: _addressCtrl,
                   validator: (v) => v == null || v.trim().isEmpty ? 'Required' : null,

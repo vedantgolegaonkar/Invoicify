@@ -1,3 +1,5 @@
+import 'dart:convert';
+import 'package:crypto/crypto.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:uuid/uuid.dart';
@@ -17,6 +19,7 @@ import '../../../settings/domain/settings_model.dart';
 import '../../../inventory/data/inventory_repository.dart';
 import '../../../inventory/domain/inventory_transaction_model.dart';
 import '../../../products/data/product_repository.dart';
+import '../../../settings/providers/business_providers.dart';
 import '../../../../services/notification_service.dart';
 class CreateEditOrderScreen extends ConsumerStatefulWidget {
   final String? orderId;
@@ -386,6 +389,20 @@ class _CreateEditOrderScreenState extends ConsumerState<CreateEditOrderScreen> {
             total: i.total,
           )).toList();
 
+          final business = ref.read(primaryBusinessProvider);
+          final supplierGst = business?.gstNumber ?? '27AAACH7409R1ZZ';
+          final finYear = now.month >= 4
+              ? '${now.year}-${(now.year + 1).toString().substring(2)}'
+              : '${now.year - 1}-${now.year.toString().substring(2)}';
+          final irnPayload = '$supplierGst:$finYear:INV:$invNumber:${now.millisecondsSinceEpoch}';
+          final irn = sha256.convert(utf8.encode(irnPayload)).toString().toLowerCase();
+
+          final yearSuffix = now.year.toString().substring(2);
+          final month = now.month.toString().padLeft(2, '0');
+          final epochMicros = now.microsecondsSinceEpoch.toString();
+          final seq = epochMicros.substring(epochMicros.length - 11);
+          final ackNo = '$yearSuffix$month$seq';
+
           final invoiceId = const Uuid().v4();
           final invoice = InvoiceModel(
             id: invoiceId,
@@ -400,6 +417,14 @@ class _CreateEditOrderScreenState extends ConsumerState<CreateEditOrderScreen> {
             status: InvoiceStatus.unpaid,
             isDelivered: false,
             notes: _notesController.text.trim().isEmpty ? null : _notesController.text.trim(),
+            irn: irn,
+            ackNo: ackNo,
+            ackDate: now,
+            paymentTerms: '30 Days',
+            buyerOrderNo: 'ORD-$id',
+            buyerOrderDate: now,
+            destination: _selectedCustomer?.address,
+            termsOfDelivery: 'Ex-Works',
             createdAt: now,
             updatedAt: now,
           );

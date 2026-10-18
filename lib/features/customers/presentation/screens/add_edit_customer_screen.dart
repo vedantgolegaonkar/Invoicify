@@ -23,6 +23,9 @@ class _AddEditCustomerScreenState extends ConsumerState<AddEditCustomerScreen> {
   final _whatsappController = TextEditingController();
   final _emailController = TextEditingController();
   final _addressController = TextEditingController();
+  final _gstController = TextEditingController();
+  final _stateNameController = TextEditingController();
+  final _stateCodeController = TextEditingController();
 
   bool _whatsappSameAsMobile = true;
   bool _isLoading = false;
@@ -31,6 +34,7 @@ class _AddEditCustomerScreenState extends ConsumerState<AddEditCustomerScreen> {
   void initState() {
     super.initState();
     _mobileController.addListener(_syncWhatsApp);
+    _gstController.addListener(_deriveStateFromGst);
 
     if (widget.customerId != null) {
       final customers = ref.read(customersStreamProvider).value;
@@ -51,6 +55,9 @@ class _AddEditCustomerScreenState extends ConsumerState<AddEditCustomerScreen> {
           }
           _emailController.text = customer.email ?? '';
           _addressController.text = customer.address;
+          _gstController.text = customer.gstNumber ?? '';
+          _stateNameController.text = customer.stateName ?? '';
+          _stateCodeController.text = customer.stateCode ?? '';
         } catch (_) {}
       }
     } else {
@@ -65,15 +72,55 @@ class _AddEditCustomerScreenState extends ConsumerState<AddEditCustomerScreen> {
     }
   }
 
+  void _deriveStateFromGst() {
+    final gst = _gstController.text.trim();
+    if (gst.length >= 2 && _stateCodeController.text.isEmpty) {
+      final code = gst.substring(0, 2);
+      if (RegExp(r'^\d{2}$').hasMatch(code)) {
+        _stateCodeController.text = code;
+        if (_stateNameController.text.isEmpty) {
+          const stateMap = {
+            '01': 'Jammu & Kashmir',
+            '02': 'Himachal Pradesh',
+            '03': 'Punjab',
+            '04': 'Chandigarh',
+            '05': 'Uttarakhand',
+            '06': 'Haryana',
+            '07': 'Delhi',
+            '08': 'Rajasthan',
+            '09': 'Uttar Pradesh',
+            '10': 'Bihar',
+            '19': 'West Bengal',
+            '23': 'Madhya Pradesh',
+            '24': 'Gujarat',
+            '27': 'Maharashtra',
+            '29': 'Karnataka',
+            '32': 'Kerala',
+            '33': 'Tamil Nadu',
+            '36': 'Telangana',
+            '37': 'Andhra Pradesh',
+          };
+          if (stateMap.containsKey(code)) {
+            _stateNameController.text = stateMap[code]!;
+          }
+        }
+      }
+    }
+  }
+
   @override
   void dispose() {
     _mobileController.removeListener(_syncWhatsApp);
+    _gstController.removeListener(_deriveStateFromGst);
     _nameController.dispose();
     _businessNameController.dispose();
     _mobileController.dispose();
     _whatsappController.dispose();
     _emailController.dispose();
     _addressController.dispose();
+    _gstController.dispose();
+    _stateNameController.dispose();
+    _stateCodeController.dispose();
     super.dispose();
   }
 
@@ -111,6 +158,9 @@ class _AddEditCustomerScreenState extends ConsumerState<AddEditCustomerScreen> {
         email: _emailController.text.trim().isEmpty ? null : _emailController.text.trim(),
         address: _addressController.text.trim(),
         currentOutstanding: outstanding,
+        gstNumber: _gstController.text.trim().isEmpty ? null : _gstController.text.trim().toUpperCase(),
+        stateName: _stateNameController.text.trim().isEmpty ? null : _stateNameController.text.trim(),
+        stateCode: _stateCodeController.text.trim().isEmpty ? null : _stateCodeController.text.trim(),
         createdAt: now,
         updatedAt: now,
       );
@@ -238,6 +288,37 @@ class _AddEditCustomerScreenState extends ConsumerState<AddEditCustomerScreen> {
                 keyboardType: TextInputType.emailAddress,
                 prefixIcon: const Icon(Icons.email_outlined),
                 controller: _emailController,
+              ),
+
+              // ─── Statutory & Tax Details (GST) ───────────────────
+              _sectionHeader('Tax & GST Details (Optional)'),
+              CustomTextField(
+                label: 'GSTIN / UIN',
+                hint: 'e.g. 27AABCU9603R1ZX',
+                prefixIcon: const Icon(Icons.receipt_outlined),
+                controller: _gstController,
+              ),
+              Row(
+                children: [
+                  Expanded(
+                    flex: 2,
+                    child: CustomTextField(
+                      label: 'State Name',
+                      hint: 'e.g. Maharashtra',
+                      controller: _stateNameController,
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    flex: 1,
+                    child: CustomTextField(
+                      label: 'State Code',
+                      hint: 'e.g. 27',
+                      keyboardType: TextInputType.number,
+                      controller: _stateCodeController,
+                    ),
+                  ),
+                ],
               ),
 
               // ─── Address ─────────────────────────────────────

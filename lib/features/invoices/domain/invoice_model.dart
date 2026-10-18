@@ -39,7 +39,9 @@ class InvoiceItem extends Equatable {
   final String productName;
   final String? hsnCode;
   final double quantity;
+  final String unit; // e.g. Nos., Kgs, Pcs
   final double unitPrice;
+  final double discountPercent; // e.g. 0.0
   final double subtotal;
   final double gstAmount;
   final double total;
@@ -49,7 +51,9 @@ class InvoiceItem extends Equatable {
     required this.productName,
     this.hsnCode,
     required this.quantity,
+    this.unit = 'Nos.',
     required this.unitPrice,
+    this.discountPercent = 0.0,
     required this.subtotal,
     required this.gstAmount,
     required this.total,
@@ -61,7 +65,9 @@ class InvoiceItem extends Equatable {
       'productName': productName,
       'hsnCode': hsnCode,
       'quantity': quantity,
+      'unit': unit,
       'unitPrice': unitPrice,
+      'discountPercent': discountPercent,
       'subtotal': subtotal,
       'gstAmount': gstAmount,
       'total': total,
@@ -74,7 +80,9 @@ class InvoiceItem extends Equatable {
       productName: map['productName'] ?? '',
       hsnCode: map['hsnCode'],
       quantity: (map['quantity'] ?? 0.0).toDouble(),
+      unit: map['unit'] ?? 'Nos.',
       unitPrice: (map['unitPrice'] ?? 0.0).toDouble(),
+      discountPercent: (map['discountPercent'] ?? 0.0).toDouble(),
       subtotal: (map['subtotal'] ?? 0.0).toDouble(),
       gstAmount: (map['gstAmount'] ?? 0.0).toDouble(),
       total: (map['total'] ?? 0.0).toDouble(),
@@ -87,7 +95,9 @@ class InvoiceItem extends Equatable {
         productName,
         hsnCode,
         quantity,
+        unit,
         unitPrice,
+        discountPercent,
         subtotal,
         gstAmount,
         total,
@@ -108,6 +118,18 @@ class InvoiceModel extends Equatable {
   final bool isDelivered;
   final DateTime? deliveryDate;
   final String? notes;
+
+  // Statutory e-Invoice & Dispatch fields
+  final String? irn;
+  final String? ackNo;
+  final DateTime? ackDate;
+  final String? paymentTerms;
+  final String? buyerOrderNo;
+  final DateTime? buyerOrderDate;
+  final String? destination;
+  final String? termsOfDelivery;
+  final String? referenceNoAndDate;
+
   final DateTime createdAt;
   final DateTime updatedAt;
   final bool isDeleted;
@@ -127,6 +149,15 @@ class InvoiceModel extends Equatable {
     required this.isDelivered,
     this.deliveryDate,
     this.notes,
+    this.irn,
+    this.ackNo,
+    this.ackDate,
+    this.paymentTerms,
+    this.buyerOrderNo,
+    this.buyerOrderDate,
+    this.destination,
+    this.termsOfDelivery,
+    this.referenceNoAndDate,
     required this.createdAt,
     required this.updatedAt,
     this.isDeleted = false,
@@ -147,6 +178,15 @@ class InvoiceModel extends Equatable {
     bool? isDelivered,
     DateTime? deliveryDate,
     String? notes,
+    String? irn,
+    String? ackNo,
+    DateTime? ackDate,
+    String? paymentTerms,
+    String? buyerOrderNo,
+    DateTime? buyerOrderDate,
+    String? destination,
+    String? termsOfDelivery,
+    String? referenceNoAndDate,
     DateTime? createdAt,
     DateTime? updatedAt,
     bool? isDeleted,
@@ -166,6 +206,15 @@ class InvoiceModel extends Equatable {
       isDelivered: isDelivered ?? this.isDelivered,
       deliveryDate: deliveryDate ?? this.deliveryDate,
       notes: notes ?? this.notes,
+      irn: irn ?? this.irn,
+      ackNo: ackNo ?? this.ackNo,
+      ackDate: ackDate ?? this.ackDate,
+      paymentTerms: paymentTerms ?? this.paymentTerms,
+      buyerOrderNo: buyerOrderNo ?? this.buyerOrderNo,
+      buyerOrderDate: buyerOrderDate ?? this.buyerOrderDate,
+      destination: destination ?? this.destination,
+      termsOfDelivery: termsOfDelivery ?? this.termsOfDelivery,
+      referenceNoAndDate: referenceNoAndDate ?? this.referenceNoAndDate,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
       isDeleted: isDeleted ?? this.isDeleted,
@@ -188,6 +237,15 @@ class InvoiceModel extends Equatable {
       'isDelivered': isDelivered,
       'deliveryDate': deliveryDate != null ? Timestamp.fromDate(deliveryDate!) : null,
       'notes': notes,
+      'irn': irn,
+      'ackNo': ackNo,
+      'ackDate': ackDate != null ? Timestamp.fromDate(ackDate!) : null,
+      'paymentTerms': paymentTerms,
+      'buyerOrderNo': buyerOrderNo,
+      'buyerOrderDate': buyerOrderDate != null ? Timestamp.fromDate(buyerOrderDate!) : null,
+      'destination': destination,
+      'termsOfDelivery': termsOfDelivery,
+      'referenceNoAndDate': referenceNoAndDate,
       'createdAt': Timestamp.fromDate(createdAt),
       'updatedAt': Timestamp.fromDate(updatedAt),
       'isDeleted': isDeleted,
@@ -212,6 +270,15 @@ class InvoiceModel extends Equatable {
       isDelivered: map['isDelivered'] ?? false,
       deliveryDate: (map['deliveryDate'] as Timestamp?)?.toDate(),
       notes: map['notes'],
+      irn: map['irn'],
+      ackNo: map['ackNo'],
+      ackDate: (map['ackDate'] as Timestamp?)?.toDate(),
+      paymentTerms: map['paymentTerms'],
+      buyerOrderNo: map['buyerOrderNo'],
+      buyerOrderDate: (map['buyerOrderDate'] as Timestamp?)?.toDate(),
+      destination: map['destination'],
+      termsOfDelivery: map['termsOfDelivery'],
+      referenceNoAndDate: map['referenceNoAndDate'],
       createdAt: (map['createdAt'] as Timestamp?)?.toDate() ?? DateTime.now(),
       updatedAt: (map['updatedAt'] as Timestamp?)?.toDate() ?? DateTime.now(),
       isDeleted: map['isDeleted'] ?? false,
@@ -239,6 +306,15 @@ class InvoiceModel extends Equatable {
         isDelivered,
         deliveryDate,
         notes,
+        irn,
+        ackNo,
+        ackDate,
+        paymentTerms,
+        buyerOrderNo,
+        buyerOrderDate,
+        destination,
+        termsOfDelivery,
+        referenceNoAndDate,
         createdAt,
         updatedAt,
         isDeleted,

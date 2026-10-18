@@ -12,6 +12,9 @@ class CustomerModel extends Equatable {
   final double currentOutstanding;
   final Map<String, double>? productPrices;
   final String? notes;
+  final String? gstNumber;
+  final String? stateName;
+  final String? stateCode;
   final DateTime createdAt;
   final DateTime updatedAt;
   final bool isDeleted;
@@ -28,6 +31,9 @@ class CustomerModel extends Equatable {
     required this.currentOutstanding,
     this.productPrices,
     this.notes,
+    this.gstNumber,
+    this.stateName,
+    this.stateCode,
     required this.createdAt,
     required this.updatedAt,
     this.isDeleted = false,
@@ -45,6 +51,9 @@ class CustomerModel extends Equatable {
     double? currentOutstanding,
     Map<String, double>? productPrices,
     String? notes,
+    String? gstNumber,
+    String? stateName,
+    String? stateCode,
     DateTime? createdAt,
     DateTime? updatedAt,
     bool? isDeleted,
@@ -61,6 +70,9 @@ class CustomerModel extends Equatable {
       currentOutstanding: currentOutstanding ?? this.currentOutstanding,
       productPrices: productPrices ?? this.productPrices,
       notes: notes ?? this.notes,
+      gstNumber: gstNumber ?? this.gstNumber,
+      stateName: stateName ?? this.stateName,
+      stateCode: stateCode ?? this.stateCode,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
       isDeleted: isDeleted ?? this.isDeleted,
@@ -80,6 +92,9 @@ class CustomerModel extends Equatable {
       'currentOutstanding': currentOutstanding,
       'productPrices': productPrices,
       'notes': notes,
+      'gstNumber': gstNumber,
+      'stateName': stateName,
+      'stateCode': stateCode,
       'createdAt': Timestamp.fromDate(createdAt),
       'updatedAt': Timestamp.fromDate(updatedAt),
       'isDeleted': isDeleted,
@@ -101,6 +116,9 @@ class CustomerModel extends Equatable {
           ? Map<String, double>.from((map['productPrices'] as Map).map((k, v) => MapEntry(k as String, (v as num).toDouble())))
           : null,
       notes: map['notes'],
+      gstNumber: map['gstNumber'],
+      stateName: map['stateName'],
+      stateCode: map['stateCode'],
       createdAt: (map['createdAt'] as Timestamp?)?.toDate() ?? DateTime.now(),
       updatedAt: (map['updatedAt'] as Timestamp?)?.toDate() ?? DateTime.now(),
       isDeleted: map['isDeleted'] ?? false,
@@ -125,6 +143,9 @@ class CustomerModel extends Equatable {
         currentOutstanding,
         productPrices,
         notes,
+        gstNumber,
+        stateName,
+        stateCode,
         createdAt,
         updatedAt,
         isDeleted,

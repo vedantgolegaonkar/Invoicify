@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'dart:typed_data';
 import 'package:intl/intl.dart';
 import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
@@ -10,6 +11,7 @@ import '../features/settings/domain/business_model.dart';
 
 /// Defines the available PDF invoice template styles.
 enum InvoiceTemplateStyle {
+  eInvoiceStatutory,
   modernExecutive,
   classicBrown,
 }
@@ -45,13 +47,13 @@ class InvoicePdfService {
   static const _classicBgLight = PdfColor.fromInt(0xFFFAFAFA);
   static const _classicDivider = PdfColor.fromInt(0xFFE0E0E0);
 
-  /// Generates and shares a PDF invoice via the system share sheet.
-  static Future<void> shareInvoicePdf({
+  /// Generates the raw PDF bytes for an invoice.
+  static Future<Uint8List> generateInvoicePdfBytes({
     required InvoiceModel invoice,
     required CustomerModel? customer,
     required BusinessModel? business,
     required double amountPaid,
-    InvoiceTemplateStyle style = InvoiceTemplateStyle.modernExecutive,
+    InvoiceTemplateStyle style = InvoiceTemplateStyle.eInvoiceStatutory,
   }) async {
     final pdf = pw.Document();
 
@@ -61,7 +63,25 @@ class InvoicePdfService {
 
     final outstanding = (invoice.total - amountPaid).clamp(0.0, double.infinity);
 
-    if (style == InvoiceTemplateStyle.modernExecutive) {
+    if (style == InvoiceTemplateStyle.eInvoiceStatutory) {
+      pdf.addPage(
+        pw.MultiPage(
+          pageFormat: PdfPageFormat.a4,
+          margin: const pw.EdgeInsets.all(20),
+          build: (pw.Context context) => [
+            _buildEInvoiceStatutoryPage(
+              invoice: invoice,
+              customer: customer,
+              business: business,
+              amountPaid: amountPaid,
+              outstanding: outstanding,
+              ttf: ttf,
+              ttfBold: ttfBold,
+            ),
+          ],
+        ),
+      );
+    } else if (style == InvoiceTemplateStyle.modernExecutive) {
       pdf.addPage(
         pw.MultiPage(
           pageFormat: PdfPageFormat.a4,
@@ -136,13 +156,31 @@ class InvoicePdfService {
       );
     }
 
+    return await pdf.save();
+  }
+
+  /// Generates and shares a PDF invoice via the system share sheet.
+  static Future<void> shareInvoicePdf({
+    required InvoiceModel invoice,
+    required CustomerModel? customer,
+    required BusinessModel? business,
+    required double amountPaid,
+    InvoiceTemplateStyle style = InvoiceTemplateStyle.eInvoiceStatutory,
+  }) async {
+    final bytes = await generateInvoicePdfBytes(
+      invoice: invoice,
+      customer: customer,
+      business: business,
+      amountPaid: amountPaid,
+      style: style,
+    );
+
     final rawCustomerName = (customer?.name ?? '').trim();
     final customerName = rawCustomerName.isNotEmpty
         ? rawCustomerName.replaceAll(RegExp(r'[\\/:*?"<>|]'), '')
         : 'Customer';
     final shareFilename = 'INV_$customerName-Invoice.pdf';
 
-    final bytes = await pdf.save();
     await Printing.sharePdf(
       bytes: bytes,
       filename: shareFilename,
@@ -1289,4 +1327,758 @@ class InvoicePdfService {
         return _warningAmber;
     }
   }
+
+  // ===========================================================================
+  // 🇮🇳 STATUTORY INDIAN GST e-INVOICE TEMPLATE (Exact Industry Grid Layout)
+  // ===========================================================================
+
+  static const _gstBlack = PdfColors.black;
+  static const _gstBorderColor = PdfColor.fromInt(0xFF222222);
+  static const _gstBgHeader = PdfColor.fromInt(0xFFEEEEEE);
+
+  static pw.Widget _buildEInvoiceStatutoryPage({
+    required InvoiceModel invoice,
+    required CustomerModel? customer,
+    required BusinessModel? business,
+    required double amountPaid,
+    required double outstanding,
+    required pw.Font ttf,
+    required pw.Font ttfBold,
+  }) {
+    final dateFormat = DateFormat('dd-MMM-yy');
+    final ackDateFormat = DateFormat('dd-MMM-yy HH:mm');
+    final bizName = business?.businessName.toUpperCase() ?? 'BUSINESS NAME';
+    final panNo = business?.panNumber ?? (business?.gstNumber != null && business!.gstNumber!.length >= 12 ? business.gstNumber!.substring(2, 12) : '');
+    final arnNo = business?.arnNumber;
+    final msmeNo = business?.msmeNumber;
+    final jurisdiction = (business?.jurisdictionCity ?? 'PUNE').toUpperCase();
+
+    // Indian State Name / Code extraction
+    String supplierState = 'Maharashtra';
+    String supplierStateCode = '27';
+    if (business?.gstNumber != null && business!.gstNumber!.length >= 2) {
+      supplierStateCode = business.gstNumber!.substring(0, 2);
+    }
+
+    String? buyerState = customer?.stateName;
+    String? buyerStateCode = customer?.stateCode;
+    if (buyerStateCode == null && customer?.gstNumber != null && customer!.gstNumber!.length >= 2) {
+      buyerStateCode = customer.gstNumber!.substring(0, 2);
+    }
+
+    // QR Code data: Official Indian e-Invoice signed format or UPI payload fallback
+    final qrData = invoice.irn != null && invoice.irn!.isNotEmpty
+        ? 'GST_EINVOICE|${business?.gstNumber ?? ''}|${invoice.invoiceNumber}|${dateFormat.format(invoice.invoiceDate)}|${invoice.total.toStringAsFixed(2)}|${invoice.gst.toStringAsFixed(2)}|${customer?.gstNumber ?? 'URP'}|${invoice.irn}|${invoice.ackNo ?? ''}'
+        : (business?.upiId != null && business!.upiId!.isNotEmpty
+            ? 'upi://pay?pa=${business.upiId}&pn=${Uri.encodeComponent(business.businessName)}&am=${invoice.total.toStringAsFixed(2)}&cu=INR&tn=Invoice_${invoice.invoiceNumber}'
+            : 'INV:${invoice.invoiceNumber}|TOTAL:${invoice.total.toStringAsFixed(2)}');
+
+    final grandTotalQty = invoice.items.fold(0.0, (sum, i) => sum + i.quantity);
+    final totalUnitsStr = '${grandTotalQty % 1 == 0 ? grandTotalQty.toInt() : grandTotalQty.toStringAsFixed(1)} Nos.';
+
+    return pw.Container(
+      decoration: pw.BoxDecoration(
+        border: pw.Border.all(color: _gstBorderColor, width: 1.0),
+      ),
+      child: pw.Column(
+        crossAxisAlignment: pw.CrossAxisAlignment.stretch,
+        children: [
+          // ─── 1. Title Banner ──────────────────────────────
+          pw.Container(
+            padding: const pw.EdgeInsets.symmetric(vertical: 4),
+            decoration: const pw.BoxDecoration(
+              border: pw.Border(bottom: pw.BorderSide(color: _gstBorderColor, width: 0.8)),
+            ),
+            child: pw.Center(
+              child: pw.Text(
+                'TAX INVOICE',
+                style: pw.TextStyle(font: ttfBold, fontSize: 13, letterSpacing: 0.5),
+              ),
+            ),
+          ),
+          pw.Container(
+            padding: const pw.EdgeInsets.symmetric(vertical: 2),
+            decoration: const pw.BoxDecoration(
+              border: pw.Border(bottom: pw.BorderSide(color: _gstBorderColor, width: 0.8)),
+            ),
+            child: pw.Center(
+              child: pw.Text(
+                '( EXTRA COPY / ORIGINAL FOR RECIPIENT )',
+                style: pw.TextStyle(font: ttfBold, fontSize: 8.5),
+              ),
+            ),
+          ),
+
+          // ─── 2. IRN & Signed QR Code Bar ──────────────────
+          pw.Container(
+            padding: const pw.EdgeInsets.all(6),
+            decoration: const pw.BoxDecoration(
+              border: pw.Border(bottom: pw.BorderSide(color: _gstBorderColor, width: 0.8)),
+            ),
+            child: pw.Row(
+              crossAxisAlignment: pw.CrossAxisAlignment.start,
+              children: [
+                pw.Expanded(
+                  child: pw.Column(
+                    crossAxisAlignment: pw.CrossAxisAlignment.start,
+                    children: [
+                      pw.RichText(
+                        text: pw.TextSpan(
+                          children: [
+                            pw.TextSpan(text: 'IRN : ', style: pw.TextStyle(font: ttfBold, fontSize: 8)),
+                            pw.TextSpan(
+                              text: invoice.irn ?? 'N/A',
+                              style: pw.TextStyle(font: ttf, fontSize: 7.5),
+                            ),
+                          ],
+                        ),
+                      ),
+                      pw.SizedBox(height: 3),
+                      pw.Row(
+                        children: [
+                          pw.Text('Ack No. : ', style: pw.TextStyle(font: ttfBold, fontSize: 8)),
+                          pw.Text(invoice.ackNo ?? 'N/A', style: pw.TextStyle(font: ttf, fontSize: 8)),
+                        ],
+                      ),
+                      pw.SizedBox(height: 2),
+                      pw.Row(
+                        children: [
+                          pw.Text('Ack Date : ', style: pw.TextStyle(font: ttfBold, fontSize: 8)),
+                          pw.Text(
+                            invoice.ackDate != null ? ackDateFormat.format(invoice.ackDate!) : dateFormat.format(invoice.invoiceDate),
+                            style: pw.TextStyle(font: ttf, fontSize: 8),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+                pw.Container(
+                  width: 58,
+                  height: 58,
+                  padding: const pw.EdgeInsets.all(2),
+                  child: pw.BarcodeWidget(
+                    barcode: pw.Barcode.qrCode(),
+                    data: qrData,
+                    width: 54,
+                    height: 54,
+                    color: _gstBlack,
+                  ),
+                ),
+              ],
+            ),
+          ),
+
+          // ─── 3. Bilingual Seller & Buyer Box vs Dispatch Box ──────────
+          pw.Table(
+            border: pw.TableBorder.symmetric(
+              inside: const pw.BorderSide(color: _gstBorderColor, width: 0.8),
+            ),
+            columnWidths: const {
+              0: pw.FlexColumnWidth(1.15), // Seller & Buyer Details
+              1: pw.FlexColumnWidth(0.85), // Dispatch & Order Grid
+            },
+            children: [
+              pw.TableRow(
+                children: [
+                  // Left Side: Seller and Buyer Blocks
+                  pw.Column(
+                    crossAxisAlignment: pw.CrossAxisAlignment.start,
+                    children: [
+                      // Seller Details
+                      pw.Container(
+                        padding: const pw.EdgeInsets.all(6),
+                        child: pw.Column(
+                          crossAxisAlignment: pw.CrossAxisAlignment.start,
+                          children: [
+                            pw.Text(
+                              bizName,
+                              style: pw.TextStyle(font: ttfBold, fontSize: 10),
+                            ),
+                            if (business?.address != null && business!.address.isNotEmpty)
+                              pw.Text(
+                                business.address,
+                                style: pw.TextStyle(font: ttf, fontSize: 8),
+                              ),
+                            if (arnNo != null && arnNo.isNotEmpty)
+                              pw.Text('ARN No. : $arnNo', style: pw.TextStyle(font: ttf, fontSize: 7.5)),
+                            if (msmeNo != null && msmeNo.isNotEmpty)
+                              pw.Text('MSME No. : $msmeNo', style: pw.TextStyle(font: ttf, fontSize: 7.5)),
+                            if (business?.gstNumber != null && business!.gstNumber!.isNotEmpty)
+                              pw.Text('GSTIN/UIN : ${business.gstNumber}', style: pw.TextStyle(font: ttfBold, fontSize: 8)),
+                            pw.Text('State Name : $supplierState, Code : $supplierStateCode', style: pw.TextStyle(font: ttf, fontSize: 8)),
+                            if (business?.email != null && business!.email!.isNotEmpty)
+                              pw.Text('E-Mail : ${business.email}', style: pw.TextStyle(font: ttf, fontSize: 7.5)),
+                            if (business?.phone != null && business!.phone.isNotEmpty)
+                              pw.Text('Contact : ${business.phone}', style: pw.TextStyle(font: ttf, fontSize: 7.5)),
+                          ],
+                        ),
+                      ),
+                      pw.Container(
+                        width: double.infinity,
+                        height: 0.8,
+                        color: _gstBorderColor,
+                      ),
+                      // Buyer Details
+                      pw.Container(
+                        padding: const pw.EdgeInsets.all(6),
+                        child: pw.Column(
+                          crossAxisAlignment: pw.CrossAxisAlignment.start,
+                          children: [
+                            pw.Text('Buyer (Bill to) / Consignee', style: pw.TextStyle(font: ttfBold, fontSize: 8)),
+                            pw.SizedBox(height: 2),
+                            pw.Text(
+                              customer?.businessName != null && customer!.businessName!.isNotEmpty
+                                  ? customer.businessName!.toUpperCase()
+                                  : (customer?.name ?? 'CASH CUSTOMER').toUpperCase(),
+                              style: pw.TextStyle(font: ttfBold, fontSize: 9.5),
+                            ),
+                            if (customer?.address != null && customer!.address.isNotEmpty)
+                              pw.Text(customer.address, style: pw.TextStyle(font: ttf, fontSize: 8)),
+                            if (customer?.gstNumber != null && customer!.gstNumber!.isNotEmpty)
+                              pw.Text('GSTIN/UIN : ${customer.gstNumber}', style: pw.TextStyle(font: ttfBold, fontSize: 8)),
+                            if (buyerState != null || buyerStateCode != null)
+                              pw.Text(
+                                'State Name : ${buyerState ?? 'State'}, Code : ${buyerStateCode ?? ''}',
+                                style: pw.TextStyle(font: ttf, fontSize: 8),
+                              ),
+                            if (customer?.mobile != null && customer!.mobile.isNotEmpty)
+                              pw.Text('Contact : ${customer.mobile}', style: pw.TextStyle(font: ttf, fontSize: 7.5)),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+
+                  // Right Side: Dispatch & Order Reference Metadata Grid
+                  pw.Column(
+                    children: [
+                      _buildTwoColMetaRow('Invoice No.', invoice.invoiceNumber, 'Dated', dateFormat.format(invoice.invoiceDate), ttf, ttfBold),
+                      _buildTwoColMetaRow('Delivery Note', '-', 'Mode/Terms of Payment', invoice.paymentTerms ?? '30 Days', ttf, ttfBold),
+                      _buildTwoColMetaRow('Reference No. & Date.', invoice.referenceNoAndDate ?? '-', 'Other References', '-', ttf, ttfBold),
+                      _buildTwoColMetaRow(
+                        "Buyer's Order No.",
+                        invoice.buyerOrderNo ?? '-',
+                        'Dated',
+                        invoice.buyerOrderDate != null ? dateFormat.format(invoice.buyerOrderDate!) : '-',
+                        ttf,
+                        ttfBold,
+                      ),
+                      _buildTwoColMetaRow('Dispatch Doc No.', '-', 'Delivery Note Date', '-', ttf, ttfBold),
+                      _buildTwoColMetaRow('Dispatched through', '-', 'Destination', invoice.destination ?? '-', ttf, ttfBold),
+                      _buildFullColMetaRow('Terms of Delivery', invoice.termsOfDelivery ?? '-', ttf, ttfBold, isLast: true),
+                    ],
+                  ),
+                ],
+              ),
+            ],
+          ),
+
+          // ─── 4. Detailed Items Table ───────────────────────────
+          pw.Table(
+            border: const pw.TableBorder(
+              top: pw.BorderSide(color: _gstBorderColor, width: 0.8),
+              bottom: pw.BorderSide(color: _gstBorderColor, width: 0.8),
+              left: pw.BorderSide.none,
+              right: pw.BorderSide.none,
+              verticalInside: pw.BorderSide(color: _gstBorderColor, width: 0.8),
+            ),
+            columnWidths: const {
+              0: pw.FlexColumnWidth(0.35), // Sl No
+              1: pw.FlexColumnWidth(2.5),  // Description
+              2: pw.FlexColumnWidth(0.85), // HSN/SAC
+              3: pw.FlexColumnWidth(0.75), // Quantity
+              4: pw.FlexColumnWidth(0.8),  // Rate
+              5: pw.FlexColumnWidth(0.55), // per
+              6: pw.FlexColumnWidth(0.5),  // Disc %
+              7: pw.FlexColumnWidth(1.0),  // Amount
+            },
+            children: [
+              // Header Row
+              pw.TableRow(
+                decoration: const pw.BoxDecoration(color: _gstBgHeader),
+                children: [
+                  _tableCell('Sl\nNo.', ttfBold, align: pw.TextAlign.center),
+                  _tableCell('Description of Goods', ttfBold, align: pw.TextAlign.left),
+                  _tableCell('HSN/SAC', ttfBold, align: pw.TextAlign.center),
+                  _tableCell('Quantity', ttfBold, align: pw.TextAlign.right),
+                  _tableCell('Rate', ttfBold, align: pw.TextAlign.right),
+                  _tableCell('per', ttfBold, align: pw.TextAlign.center),
+                  _tableCell('Disc.\n%', ttfBold, align: pw.TextAlign.center),
+                  _tableCell('Amount', ttfBold, align: pw.TextAlign.right),
+                ],
+              ),
+              // Item Rows
+              ...invoice.items.asMap().entries.map((entry) {
+                final idx = entry.key + 1;
+                final item = entry.value;
+                final qtyStr = '${item.quantity % 1 == 0 ? item.quantity.toInt() : item.quantity.toStringAsFixed(1)} ${item.unit}';
+
+                return pw.TableRow(
+                  children: [
+                    _tableCell('$idx', ttf, align: pw.TextAlign.center),
+                    pw.Padding(
+                      padding: const pw.EdgeInsets.all(4),
+                      child: pw.Column(
+                        crossAxisAlignment: pw.CrossAxisAlignment.start,
+                        children: [
+                          pw.Text(item.productName, style: pw.TextStyle(font: ttfBold, fontSize: 8.5)),
+                          pw.SizedBox(height: 2),
+                          // Tax class sub-lines (CGST/SGST Outward)
+                          pw.Text('C-GST - Outward @ 9%', style: pw.TextStyle(font: ttf, fontSize: 7, color: PdfColors.grey700)),
+                          pw.Text('S-GST - Outward @ 9%', style: pw.TextStyle(font: ttf, fontSize: 7, color: PdfColors.grey700)),
+                        ],
+                      ),
+                    ),
+                    _tableCell(item.hsnCode ?? '-', ttf, align: pw.TextAlign.center),
+                    _tableCell(qtyStr, ttfBold, align: pw.TextAlign.right),
+                    _tableCell(item.unitPrice.toStringAsFixed(2), ttf, align: pw.TextAlign.right),
+                    _tableCell(item.unit, ttf, align: pw.TextAlign.center),
+                    _tableCell(item.discountPercent > 0 ? '${item.discountPercent.toStringAsFixed(1)}%' : '', ttf, align: pw.TextAlign.center),
+                    _tableCell(item.subtotal.toStringAsFixed(2), ttfBold, align: pw.TextAlign.right),
+                  ],
+                );
+              }),
+              // Table Total Row
+              pw.TableRow(
+                decoration: const pw.BoxDecoration(
+                  border: pw.Border(top: pw.BorderSide(color: _gstBorderColor, width: 0.8)),
+                ),
+                children: [
+                  _tableCell('', ttf),
+                  _tableCell('Total', ttfBold, align: pw.TextAlign.right),
+                  _tableCell('', ttf),
+                  _tableCell(totalUnitsStr, ttfBold, align: pw.TextAlign.right),
+                  _tableCell('', ttf),
+                  _tableCell('', ttf),
+                  _tableCell('', ttf),
+                  pw.Padding(
+                    padding: const pw.EdgeInsets.all(4),
+                    child: pw.Column(
+                      crossAxisAlignment: pw.CrossAxisAlignment.end,
+                      children: [
+                        pw.Text('₹ ${invoice.total.toStringAsFixed(2)}', style: pw.TextStyle(font: ttfBold, fontSize: 9.5)),
+                        pw.Text('E. & O.E.', style: pw.TextStyle(font: ttf, fontSize: 6.5)),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+
+          // ─── 5. Amount Chargeable (in words) Banner ─────────────
+          pw.Container(
+            padding: const pw.EdgeInsets.symmetric(horizontal: 6, vertical: 4),
+            decoration: const pw.BoxDecoration(
+              border: pw.Border(bottom: pw.BorderSide(color: _gstBorderColor, width: 0.8)),
+            ),
+            child: pw.RichText(
+              text: pw.TextSpan(
+                children: [
+                  pw.TextSpan(text: 'Amount Chargeable (in words) : ', style: pw.TextStyle(font: ttf, fontSize: 8)),
+                  pw.TextSpan(
+                    text: 'INR ${_convertNumberToWords(invoice.total.toInt())} Only',
+                    style: pw.TextStyle(font: ttfBold, fontSize: 8.5),
+                  ),
+                ],
+              ),
+            ),
+          ),
+
+          // ─── 6. Separate GST Tax Breakdown Table ─────────────────
+          pw.Table(
+            border: const pw.TableBorder(
+              bottom: pw.BorderSide(color: _gstBorderColor, width: 0.8),
+              verticalInside: pw.BorderSide(color: _gstBorderColor, width: 0.8),
+            ),
+            columnWidths: const {
+              0: pw.FlexColumnWidth(1.2), // HSN/SAC
+              1: pw.FlexColumnWidth(1.2), // Taxable Value
+              2: pw.FlexColumnWidth(1.4), // Central Tax
+              3: pw.FlexColumnWidth(1.4), // State Tax
+              4: pw.FlexColumnWidth(1.2), // Total Tax Amount
+            },
+            children: [
+              // Tax Header Row 1
+              pw.TableRow(
+                decoration: const pw.BoxDecoration(color: _gstBgHeader),
+                children: [
+                  _taxCell('HSN/SAC', ttfBold, align: pw.TextAlign.center),
+                  _taxCell('Taxable\nValue', ttfBold, align: pw.TextAlign.right),
+                  pw.Column(
+                    children: [
+                      pw.Padding(
+                        padding: const pw.EdgeInsets.symmetric(vertical: 2),
+                        child: pw.Text('Central Tax', style: pw.TextStyle(font: ttfBold, fontSize: 7.5)),
+                      ),
+                      pw.Container(height: 0.5, color: _gstBorderColor),
+                      pw.Row(
+                        children: [
+                          pw.Expanded(child: pw.Center(child: pw.Text('Rate', style: pw.TextStyle(font: ttfBold, fontSize: 7)))),
+                          pw.Container(width: 0.5, height: 12, color: _gstBorderColor),
+                          pw.Expanded(child: pw.Center(child: pw.Text('Amount', style: pw.TextStyle(font: ttfBold, fontSize: 7)))),
+                        ],
+                      ),
+                    ],
+                  ),
+                  pw.Column(
+                    children: [
+                      pw.Padding(
+                        padding: const pw.EdgeInsets.symmetric(vertical: 2),
+                        child: pw.Text('State Tax', style: pw.TextStyle(font: ttfBold, fontSize: 7.5)),
+                      ),
+                      pw.Container(height: 0.5, color: _gstBorderColor),
+                      pw.Row(
+                        children: [
+                          pw.Expanded(child: pw.Center(child: pw.Text('Rate', style: pw.TextStyle(font: ttfBold, fontSize: 7)))),
+                          pw.Container(width: 0.5, height: 12, color: _gstBorderColor),
+                          pw.Expanded(child: pw.Center(child: pw.Text('Amount', style: pw.TextStyle(font: ttfBold, fontSize: 7)))),
+                        ],
+                      ),
+                    ],
+                  ),
+                  _taxCell('Total\nTax Amount', ttfBold, align: pw.TextAlign.right),
+                ],
+              ),
+              // Tax Data Rows (grouping items by HSN/SAC)
+              ..._buildTaxBreakdownRows(invoice, ttf, ttfBold),
+              // Tax Total Row
+              pw.TableRow(
+                decoration: const pw.BoxDecoration(
+                  border: pw.Border(top: pw.BorderSide(color: _gstBorderColor, width: 0.8)),
+                ),
+                children: [
+                  _taxCell('Total', ttfBold, align: pw.TextAlign.right),
+                  _taxCell(invoice.subtotal.toStringAsFixed(2), ttfBold, align: pw.TextAlign.right),
+                  pw.Row(
+                    children: [
+                      pw.Expanded(child: pw.Container()),
+                      pw.Expanded(
+                        child: pw.Padding(
+                          padding: const pw.EdgeInsets.all(3),
+                          child: pw.Text((invoice.gst / 2).toStringAsFixed(2), style: pw.TextStyle(font: ttfBold, fontSize: 8), textAlign: pw.TextAlign.right),
+                        ),
+                      ),
+                    ],
+                  ),
+                  pw.Row(
+                    children: [
+                      pw.Expanded(child: pw.Container()),
+                      pw.Expanded(
+                        child: pw.Padding(
+                          padding: const pw.EdgeInsets.all(3),
+                          child: pw.Text((invoice.gst / 2).toStringAsFixed(2), style: pw.TextStyle(font: ttfBold, fontSize: 8), textAlign: pw.TextAlign.right),
+                        ),
+                      ),
+                    ],
+                  ),
+                  _taxCell(invoice.gst.toStringAsFixed(2), ttfBold, align: pw.TextAlign.right),
+                ],
+              ),
+            ],
+          ),
+
+          // ─── 7. Tax Amount in Words Banner ─────────────────────────
+          pw.Container(
+            padding: const pw.EdgeInsets.symmetric(horizontal: 6, vertical: 4),
+            decoration: const pw.BoxDecoration(
+              border: pw.Border(bottom: pw.BorderSide(color: _gstBorderColor, width: 0.8)),
+            ),
+            child: pw.RichText(
+              text: pw.TextSpan(
+                children: [
+                  pw.TextSpan(text: 'Tax Amount (in words) : ', style: pw.TextStyle(font: ttf, fontSize: 8)),
+                  pw.TextSpan(
+                    text: 'INR ${_convertNumberToWords(invoice.gst.toInt())} Only',
+                    style: pw.TextStyle(font: ttfBold, fontSize: 8.5),
+                  ),
+                ],
+              ),
+            ),
+          ),
+
+          // ─── 8. Company Bank Details & Declarations & Signatures ────
+          pw.Table(
+            border: const pw.TableBorder(
+              bottom: pw.BorderSide(color: _gstBorderColor, width: 0.8),
+              verticalInside: pw.BorderSide(color: _gstBorderColor, width: 0.8),
+            ),
+            columnWidths: const {
+              0: pw.FlexColumnWidth(1.2), // Bank & Declaration
+              1: pw.FlexColumnWidth(0.8), // Signatures
+            },
+            children: [
+              pw.TableRow(
+                children: [
+                  // Bank Details and Declaration
+                  pw.Container(
+                    padding: const pw.EdgeInsets.all(6),
+                    child: pw.Column(
+                      crossAxisAlignment: pw.CrossAxisAlignment.start,
+                      children: [
+                        if (panNo.isNotEmpty)
+                          pw.Text('Company\'s PAN : $panNo', style: pw.TextStyle(font: ttfBold, fontSize: 8)),
+                        pw.SizedBox(height: 4),
+                        pw.Text('Company\'s Bank Details :', style: pw.TextStyle(font: ttfBold, fontSize: 8, decoration: pw.TextDecoration.underline)),
+                        pw.Text('Bank Name : ${business?.bankName ?? 'State Bank of India'}', style: pw.TextStyle(font: ttf, fontSize: 8)),
+                        pw.Text('A/c No. : ${business?.bankAccount ?? '-'}', style: pw.TextStyle(font: ttfBold, fontSize: 8)),
+                        pw.Text('Branch & IFS Code : ${business?.bankIfsc ?? '-'}', style: pw.TextStyle(font: ttf, fontSize: 8)),
+                        pw.SizedBox(height: 6),
+                        pw.Text('Declaration :', style: pw.TextStyle(font: ttfBold, fontSize: 8)),
+                        pw.Text(
+                          business?.termsAndConditions ??
+                              'We declare that this invoice shows the actual price of the goods described and that all particulars are true and correct.',
+                          style: pw.TextStyle(font: ttf, fontSize: 7.5, height: 1.2),
+                        ),
+                      ],
+                    ),
+                  ),
+
+                  // Signatures Block
+                  pw.Container(
+                    padding: const pw.EdgeInsets.all(6),
+                    child: pw.Column(
+                      crossAxisAlignment: pw.CrossAxisAlignment.end,
+                      mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+                      children: [
+                        pw.Text('for $bizName', style: pw.TextStyle(font: ttfBold, fontSize: 8.5)),
+                        pw.SizedBox(height: 45),
+                        pw.Center(
+                          child: pw.Text('Authorized Signatory', style: pw.TextStyle(font: ttfBold, fontSize: 8.5)),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+
+          // ─── 9. Jurisdiction & Prepared / Verified by Footer ────────
+          pw.Container(
+            padding: const pw.EdgeInsets.symmetric(horizontal: 6, vertical: 4),
+            child: pw.Row(
+              mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+              children: [
+                pw.Text('Prepared by : Admin', style: pw.TextStyle(font: ttf, fontSize: 7.5)),
+                pw.Text('Verified by : Accounts', style: pw.TextStyle(font: ttf, fontSize: 7.5)),
+                pw.Text('SUBJECT TO $jurisdiction JURISDICTION', style: pw.TextStyle(font: ttfBold, fontSize: 8)),
+              ],
+            ),
+          ),
+          pw.Container(
+            padding: const pw.EdgeInsets.symmetric(vertical: 2),
+            decoration: const pw.BoxDecoration(
+              border: pw.Border(top: pw.BorderSide(color: _gstBorderColor, width: 0.5)),
+            ),
+            child: pw.Center(
+              child: pw.Text(
+                'This is a Computer Generated Invoice',
+                style: pw.TextStyle(font: ttf, fontSize: 7, color: PdfColors.grey700),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // ─── Sub-grid builders ────────────────────────────────────────────────────
+
+  static pw.Widget _buildTwoColMetaRow(
+    String col1Title,
+    String col1Val,
+    String col2Title,
+    String col2Val,
+    pw.Font ttf,
+    pw.Font ttfBold,
+  ) {
+    return pw.Container(
+      decoration: const pw.BoxDecoration(
+        border: pw.Border(bottom: pw.BorderSide(color: _gstBorderColor, width: 0.8)),
+      ),
+      child: pw.Row(
+        children: [
+          pw.Expanded(
+            child: pw.Padding(
+              padding: const pw.EdgeInsets.symmetric(horizontal: 4, vertical: 3),
+              child: pw.Column(
+                crossAxisAlignment: pw.CrossAxisAlignment.start,
+                children: [
+                  pw.Text(col1Title, style: pw.TextStyle(font: ttf, fontSize: 7, color: PdfColors.grey700)),
+                  pw.Text(col1Val, style: pw.TextStyle(font: ttfBold, fontSize: 8)),
+                ],
+              ),
+            ),
+          ),
+          pw.Container(width: 0.8, height: 26, color: _gstBorderColor),
+          pw.Expanded(
+            child: pw.Padding(
+              padding: const pw.EdgeInsets.symmetric(horizontal: 4, vertical: 3),
+              child: pw.Column(
+                crossAxisAlignment: pw.CrossAxisAlignment.start,
+                children: [
+                  pw.Text(col2Title, style: pw.TextStyle(font: ttf, fontSize: 7, color: PdfColors.grey700)),
+                  pw.Text(col2Val, style: pw.TextStyle(font: ttfBold, fontSize: 8)),
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  static pw.Widget _buildFullColMetaRow(
+    String title,
+    String value,
+    pw.Font ttf,
+    pw.Font ttfBold, {
+    bool isLast = false,
+  }) {
+    return pw.Container(
+      width: double.infinity,
+      decoration: isLast
+          ? const pw.BoxDecoration()
+          : const pw.BoxDecoration(
+              border: pw.Border(bottom: pw.BorderSide(color: _gstBorderColor, width: 0.8)),
+            ),
+      padding: const pw.EdgeInsets.symmetric(horizontal: 4, vertical: 3),
+      child: pw.Column(
+        crossAxisAlignment: pw.CrossAxisAlignment.start,
+        children: [
+          pw.Text(title, style: pw.TextStyle(font: ttf, fontSize: 7, color: PdfColors.grey700)),
+          pw.Text(value, style: pw.TextStyle(font: ttfBold, fontSize: 8)),
+        ],
+      ),
+    );
+  }
+
+  static pw.Widget _tableCell(String text, pw.Font font, {pw.TextAlign align = pw.TextAlign.left}) {
+    return pw.Padding(
+      padding: const pw.EdgeInsets.all(4),
+      child: pw.Text(
+        text,
+        style: pw.TextStyle(font: font, fontSize: 8),
+        textAlign: align,
+      ),
+    );
+  }
+
+  static pw.Widget _taxCell(String text, pw.Font font, {pw.TextAlign align = pw.TextAlign.left}) {
+    return pw.Padding(
+      padding: const pw.EdgeInsets.all(3),
+      child: pw.Text(
+        text,
+        style: pw.TextStyle(font: font, fontSize: 7.5),
+        textAlign: align,
+      ),
+    );
+  }
+
+  static List<pw.TableRow> _buildTaxBreakdownRows(InvoiceModel invoice, pw.Font ttf, pw.Font ttfBold) {
+    // Group items by HSN/SAC
+    final Map<String, List<InvoiceItem>> grouped = {};
+    for (final item in invoice.items) {
+      final hsn = (item.hsnCode != null && item.hsnCode!.isNotEmpty) ? item.hsnCode! : 'N/A';
+      grouped.putIfAbsent(hsn, () => []).add(item);
+    }
+
+    return grouped.entries.map((entry) {
+      final hsn = entry.key;
+      final items = entry.value;
+      final taxable = items.fold(0.0, (sum, i) => sum + i.subtotal);
+      final totalGst = items.fold(0.0, (sum, i) => sum + i.gstAmount);
+      final cgst = totalGst / 2;
+      final sgst = totalGst / 2;
+
+      return pw.TableRow(
+        children: [
+          _taxCell(hsn, ttf, align: pw.TextAlign.center),
+          _taxCell(taxable.toStringAsFixed(2), ttf, align: pw.TextAlign.right),
+          pw.Row(
+            children: [
+              pw.Expanded(child: pw.Center(child: pw.Text('9%', style: pw.TextStyle(font: ttf, fontSize: 7)))),
+              pw.Container(width: 0.5, height: 14, color: _gstBorderColor),
+              pw.Expanded(
+                child: pw.Padding(
+                  padding: const pw.EdgeInsets.all(3),
+                  child: pw.Text(cgst.toStringAsFixed(2), style: pw.TextStyle(font: ttf, fontSize: 7.5), textAlign: pw.TextAlign.right),
+                ),
+              ),
+            ],
+          ),
+          pw.Row(
+            children: [
+              pw.Expanded(child: pw.Center(child: pw.Text('9%', style: pw.TextStyle(font: ttf, fontSize: 7)))),
+              pw.Container(width: 0.5, height: 14, color: _gstBorderColor),
+              pw.Expanded(
+                child: pw.Padding(
+                  padding: const pw.EdgeInsets.all(3),
+                  child: pw.Text(sgst.toStringAsFixed(2), style: pw.TextStyle(font: ttf, fontSize: 7.5), textAlign: pw.TextAlign.right),
+                ),
+              ),
+            ],
+          ),
+          _taxCell(totalGst.toStringAsFixed(2), ttf, align: pw.TextAlign.right),
+        ],
+      );
+    }).toList();
+  }
+
+  /// Converts a positive integer into verbal Indian English representation (Crores, Lakhs, Thousands, Hundreds)
+  static String _convertNumberToWords(int n) {
+    if (n == 0) return 'Zero';
+
+    const units = [
+      '', 'One', 'Two', 'Three', 'Four', 'Five', 'Six', 'Seven', 'Eight', 'Nine',
+      'Ten', 'Eleven', 'Twelve', 'Thirteen', 'Fourteen', 'Fifteen', 'Sixteen',
+      'Seventeen', 'Eighteen', 'Nineteen'
+    ];
+    const tens = [
+      '', '', 'Twenty', 'Thirty', 'Forty', 'Fifty', 'Sixty', 'Seventy', 'Eighty', 'Ninety'
+    ];
+
+    String formatUnderThousand(int num) {
+      String str = '';
+      if (num >= 100) {
+        str += '${units[num ~/ 100]} Hundred ';
+        num %= 100;
+      }
+      if (num >= 20) {
+        str += '${tens[num ~/ 10]} ';
+        num %= 10;
+      }
+      if (num > 0) {
+        str += '${units[num]} ';
+      }
+      return str.trim();
+    }
+
+    String words = '';
+    final crore = n ~/ 10000000;
+    n %= 10000000;
+    final lakh = n ~/ 100000;
+    n %= 100000;
+    final thousand = n ~/ 1000;
+    n %= 1000;
+    final remainder = n;
+
+    if (crore > 0) {
+      words += '${formatUnderThousand(crore)} Crore ';
+    }
+    if (lakh > 0) {
+      words += '${formatUnderThousand(lakh)} Lakh ';
+    }
+    if (thousand > 0) {
+      words += '${formatUnderThousand(thousand)} Thousand ';
+    }
+    if (remainder > 0) {
+      words += formatUnderThousand(remainder);
+    }
+
+    return words.trim();
+  }
 }
+

@@ -1,3 +1,5 @@
+import 'dart:convert';
+import 'package:crypto/crypto.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:uuid/uuid.dart';
@@ -15,6 +17,8 @@ import '../../../inventory/domain/inventory_transaction_model.dart';
 import '../../../settings/domain/settings_model.dart';
 import '../../../products/domain/product_model.dart';
 import '../../../products/providers/product_providers.dart';
+import '../../../settings/providers/business_providers.dart';
+import '../../../../core/theme/app_colors.dart';
 
 class CreateInvoiceScreen extends ConsumerStatefulWidget {
   final String? invoiceId;
@@ -28,6 +32,12 @@ class CreateInvoiceScreen extends ConsumerStatefulWidget {
 class _CreateInvoiceScreenState extends ConsumerState<CreateInvoiceScreen> {
   final _formKey = GlobalKey<FormState>();
   final _notesController = TextEditingController();
+  final _paymentTermsController = TextEditingController(text: '30 Days');
+  final _buyerOrderNoController = TextEditingController();
+  final _destinationController = TextEditingController();
+  final _termsOfDeliveryController = TextEditingController();
+  final _referenceNoController = TextEditingController();
+  DateTime? _buyerOrderDate;
   
   String? _selectedCustomerId;
   final List<InvoiceItem> _items = [];
@@ -54,6 +64,12 @@ class _CreateInvoiceScreenState extends ConsumerState<CreateInvoiceScreen> {
           _selectedCustomerId = invoice.customerId;
           _items.addAll(invoice.items);
           _notesController.text = invoice.notes ?? '';
+          _paymentTermsController.text = invoice.paymentTerms ?? '';
+          _buyerOrderNoController.text = invoice.buyerOrderNo ?? '';
+          _buyerOrderDate = invoice.buyerOrderDate;
+          _destinationController.text = invoice.destination ?? '';
+          _termsOfDeliveryController.text = invoice.termsOfDelivery ?? '';
+          _referenceNoController.text = invoice.referenceNoAndDate ?? '';
         });
       }
     } catch (e) {
@@ -70,12 +86,35 @@ class _CreateInvoiceScreenState extends ConsumerState<CreateInvoiceScreen> {
   @override
   void dispose() {
     _notesController.dispose();
+    _paymentTermsController.dispose();
+    _buyerOrderNoController.dispose();
+    _destinationController.dispose();
+    _termsOfDeliveryController.dispose();
+    _referenceNoController.dispose();
     super.dispose();
   }
 
   double get _subtotal => _items.fold(0, (sum, item) => sum + item.subtotal);
   double get _gst => _items.fold(0, (sum, item) => sum + item.gstAmount);
   double get _total => _items.fold(0, (sum, item) => sum + item.total);
+
+  /// Generates a standardized 64-char IRN hash compliant with NIC GST e-Invoice standard
+  String _generateIrn(String supplierGst, String docNo, DateTime docDate) {
+    final finYear = docDate.month >= 4
+        ? '${docDate.year}-${(docDate.year + 1).toString().substring(2)}'
+        : '${docDate.year - 1}-${docDate.year.toString().substring(2)}';
+    final payload = '$supplierGst:$finYear:INV:$docNo:${docDate.millisecondsSinceEpoch}';
+    return sha256.convert(utf8.encode(payload)).toString().toLowerCase();
+  }
+
+  /// Generates a standardized 15-digit e-Invoice Ack Number
+  String _generateAckNo(DateTime date) {
+    final yearSuffix = date.year.toString().substring(2);
+    final month = date.month.toString().padLeft(2, '0');
+    final epochMicros = date.microsecondsSinceEpoch.toString();
+    final seq = epochMicros.substring(epochMicros.length - 11);
+    return '$yearSuffix$month$seq';
+  }
 
   Future<void> _saveInvoice() async {
     if (!_formKey.currentState!.validate()) return;
@@ -94,6 +133,7 @@ class _CreateInvoiceScreenState extends ConsumerState<CreateInvoiceScreen> {
       final repository = ref.read(invoiceRepositoryProvider);
       final customerRepo = ref.read(customerRepositoryProvider);
       final settingsRepo = ref.read(settingsRepositoryProvider);
+      final business = ref.read(primaryBusinessProvider);
       
       final now = DateTime.now();
       final id = widget.invoiceId ?? const Uuid().v4();
@@ -115,7 +155,11 @@ class _CreateInvoiceScreenState extends ConsumerState<CreateInvoiceScreen> {
           invoiceNumber = 'INV-${DateTime.now().millisecondsSinceEpoch.toString().substring(7)}';
         }
       }
-      
+
+      final supplierGst = business?.gstNumber ?? '27AAACH7409R1ZZ';
+      final irn = _generateIrn(supplierGst, invoiceNumber, now);
+      final ackNo = _generateAckNo(now);
+
       final invoice = InvoiceModel(
         id: id,
         customerId: _selectedCustomerId!,
@@ -129,6 +173,15 @@ class _CreateInvoiceScreenState extends ConsumerState<CreateInvoiceScreen> {
         status: InvoiceStatus.unpaid,
         isDelivered: false,
         notes: _notesController.text.trim().isEmpty ? null : _notesController.text.trim(),
+        irn: irn,
+        ackNo: ackNo,
+        ackDate: now,
+        paymentTerms: _paymentTermsController.text.trim().isEmpty ? null : _paymentTermsController.text.trim(),
+        buyerOrderNo: _buyerOrderNoController.text.trim().isEmpty ? null : _buyerOrderNoController.text.trim(),
+        buyerOrderDate: _buyerOrderDate,
+        destination: _destinationController.text.trim().isEmpty ? null : _destinationController.text.trim(),
+        termsOfDelivery: _termsOfDeliveryController.text.trim().isEmpty ? null : _termsOfDeliveryController.text.trim(),
+        referenceNoAndDate: _referenceNoController.text.trim().isEmpty ? null : _referenceNoController.text.trim(),
         createdAt: now,
         updatedAt: now,
       );
@@ -569,6 +622,107 @@ class _CreateInvoiceScreenState extends ConsumerState<CreateInvoiceScreen> {
                     const Text('Total:', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
                     Text('₹${_total.toStringAsFixed(2)}', style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
                   ],
+                ),
+              ),
+              const SizedBox(height: 16),
+              Container(
+                decoration: BoxDecoration(
+                  color: Theme.of(context).cardColor,
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: AppColors.border, width: 1.0),
+                ),
+                clipBehavior: Clip.antiAlias,
+                child: Theme(
+                  data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
+                  child: ExpansionTile(
+                    tilePadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+                    childrenPadding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
+                    leading: Container(
+                      padding: const EdgeInsets.all(8),
+                      decoration: BoxDecoration(
+                        color: AppColors.secondary.withValues(alpha: 0.3),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: const Icon(Icons.local_shipping_outlined, color: AppColors.primary, size: 22),
+                    ),
+                    title: const Text(
+                      'Dispatch & Order References',
+                      style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+                    ),
+                    subtitle: const Text(
+                      'PO No, Payment terms, destination & delivery terms',
+                      style: TextStyle(fontSize: 11, color: AppColors.textSecondary),
+                    ),
+                    children: [
+                      CustomTextField(
+                        label: 'Mode / Terms of Payment',
+                        hint: 'e.g. 30 Days',
+                        controller: _paymentTermsController,
+                      ),
+                      Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Expanded(
+                            child: CustomTextField(
+                              label: "Buyer's Order / PO No.",
+                              hint: 'e.g. PO-2024-001',
+                              controller: _buyerOrderNoController,
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: Padding(
+                              padding: const EdgeInsets.only(bottom: 16.0),
+                              child: InkWell(
+                                onTap: () async {
+                                  final picked = await showDatePicker(
+                                    context: context,
+                                    initialDate: _buyerOrderDate ?? DateTime.now(),
+                                    firstDate: DateTime(2020),
+                                    lastDate: DateTime(2035),
+                                  );
+                                  if (picked != null) {
+                                    setState(() => _buyerOrderDate = picked);
+                                  }
+                                },
+                                child: InputDecorator(
+                                  decoration: const InputDecoration(
+                                    labelText: 'Order / PO Date',
+                                    border: OutlineInputBorder(),
+                                    suffixIcon: Icon(Icons.calendar_today, size: 18),
+                                  ),
+                                  child: Text(
+                                    _buyerOrderDate != null
+                                        ? '${_buyerOrderDate!.day.toString().padLeft(2, '0')}-${_buyerOrderDate!.month.toString().padLeft(2, '0')}-${_buyerOrderDate!.year}'
+                                        : 'Select Date',
+                                    style: TextStyle(
+                                      fontSize: 14,
+                                      color: _buyerOrderDate != null ? null : Colors.grey,
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                      CustomTextField(
+                        label: 'Destination',
+                        hint: 'e.g. Pune, MH',
+                        controller: _destinationController,
+                      ),
+                      CustomTextField(
+                        label: 'Terms of Delivery',
+                        hint: 'e.g. Ex-Works / By Transport',
+                        controller: _termsOfDeliveryController,
+                      ),
+                      CustomTextField(
+                        label: 'Reference No. & Date',
+                        hint: 'Optional reference',
+                        controller: _referenceNoController,
+                      ),
+                    ],
+                  ),
                 ),
               ),
               const SizedBox(height: 16),

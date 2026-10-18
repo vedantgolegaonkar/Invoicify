@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'package:printing/printing.dart';
 import '../../../../shared/widgets/status_chip.dart';
 import '../../providers/invoice_providers.dart';
 import '../../domain/invoice_model.dart';
@@ -61,12 +62,6 @@ class InvoiceDetailsScreen extends ConsumerWidget {
               elevation: 0,
               backgroundColor: AppColors.primary,
               foregroundColor: Colors.white,
-              actions: [
-                IconButton(
-                  icon: const Icon(Icons.share_outlined),
-                  onPressed: () => _sharePdf(invoice, customer, business, amountPaid),
-                ),
-              ],
             ),
             body: SingleChildScrollView(
             child: Column(
@@ -408,24 +403,56 @@ class InvoiceDetailsScreen extends ConsumerWidget {
                         ],
                         const SizedBox(height: 24),
                         
-                        // Status Action Buttons
-                        if (!isCancelled) ...[
+                        // Action Buttons: Preview Invoice & Download
+                        Row(
+                          children: [
+                            Expanded(
+                              child: SizedBox(
+                                height: 50,
+                                child: OutlinedButton.icon(
+                                  onPressed: () => _previewPdf(context, invoice, customer, business, amountPaid),
+                                  icon: const Icon(Icons.remove_red_eye_outlined),
+                                  label: const Text('Preview', style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold)),
+                                  style: OutlinedButton.styleFrom(
+                                    foregroundColor: AppColors.primary,
+                                    side: const BorderSide(color: AppColors.primary, width: 1.5),
+                                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                                  ),
+                                ),
+                              ),
+                            ),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: SizedBox(
+                                height: 50,
+                                child: ElevatedButton.icon(
+                                  onPressed: () => _sharePdf(invoice, customer, business, amountPaid),
+                                  icon: const Icon(Icons.download_outlined),
+                                  label: const Text('Download', style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold)),
+                                  style: ElevatedButton.styleFrom(
+                                    backgroundColor: AppColors.primary,
+                                    foregroundColor: Colors.white,
+                                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                        if (!isCancelled && invoice.status != InvoiceStatus.paid && outstanding > 0) ...[
+                          const SizedBox(height: 12),
                           SizedBox(
                             width: double.infinity,
                             height: 50,
                             child: ElevatedButton.icon(
-                              onPressed: (invoice.status == InvoiceStatus.paid || outstanding <= 0) 
-                                ? null 
-                                : () => context.push(
-                                  '/payments/record?invoiceId=${invoice.id}&invoiceNumber=${invoice.invoiceNumber}&customerId=${invoice.customerId}&amount=${invoice.total}'
-                                ),
+                              onPressed: () => context.push(
+                                '/payments/record?invoiceId=${invoice.id}&invoiceNumber=${invoice.invoiceNumber}&customerId=${invoice.customerId}&amount=${invoice.total}',
+                              ),
                               icon: const Icon(Icons.payment),
                               label: const Text('Record Payment', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
                               style: ElevatedButton.styleFrom(
-                                backgroundColor: AppColors.primary,
+                                backgroundColor: AppColors.success,
                                 foregroundColor: Colors.white,
-                                disabledBackgroundColor: AppColors.surfaceVariant,
-                                disabledForegroundColor: AppColors.textSecondary,
                                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                               ),
                             ),
@@ -442,6 +469,47 @@ class InvoiceDetailsScreen extends ConsumerWidget {
           );
         },
       );
+  }
+
+  void _previewPdf(
+    BuildContext context,
+    InvoiceModel invoice,
+    CustomerModel? customer,
+    BusinessModel? business,
+    double amountPaid,
+  ) {
+    final rawCustomerName = (customer?.name ?? '').trim();
+    final customerName = rawCustomerName.isNotEmpty
+        ? rawCustomerName.replaceAll(RegExp(r'[\\/:*?"<>|]'), '')
+        : 'Customer';
+    final filename = 'INV_$customerName-Invoice.pdf';
+
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (context) => Scaffold(
+          appBar: AppBar(
+            title: Text('Invoice #${invoice.invoiceNumber}'),
+            backgroundColor: AppColors.primary,
+            foregroundColor: Colors.white,
+            elevation: 0,
+          ),
+          body: PdfPreview(
+            build: (format) => InvoicePdfService.generateInvoicePdfBytes(
+              invoice: invoice,
+              customer: customer,
+              business: business,
+              amountPaid: amountPaid,
+            ),
+            pdfFileName: filename,
+            canChangeOrientation: false,
+            canChangePageFormat: false,
+            canDebug: false,
+            allowPrinting: true,
+            allowSharing: true,
+          ),
+        ),
+      ),
+    );
   }
 
   Future<void> _sharePdf(
