@@ -34,11 +34,6 @@ class MainLayout extends ConsumerWidget {
         unselectedIcon: Icons.people_outline_rounded,
       ),
       _NavItemData(
-        label: 'Orders',
-        selectedIcon: Icons.shopping_cart_rounded,
-        unselectedIcon: Icons.shopping_cart_outlined,
-      ),
-      _NavItemData(
         label: 'Invoices',
         selectedIcon: Icons.receipt_long_rounded,
         unselectedIcon: Icons.receipt_long_outlined,

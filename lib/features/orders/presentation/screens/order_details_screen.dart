@@ -284,7 +284,7 @@ class OrderDetailsScreen extends ConsumerWidget {
                                         ),
                                       ),
                                       Text(
-                                        '₹${item.total.toStringAsFixed(2)}',
+                                        '₹${item.subtotal.toStringAsFixed(2)}',
                                         style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
                                       ),
                                     ],

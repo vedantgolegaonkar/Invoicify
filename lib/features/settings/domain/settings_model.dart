@@ -5,6 +5,7 @@ class SettingsModel extends Equatable {
   final String id;
   final bool pinEnabled;
   final String? pin;
+  final String? digitalSignature;
   final String invoicePrefix;
   final int invoiceNextNumber;
   final DateTime createdAt;
@@ -16,6 +17,7 @@ class SettingsModel extends Equatable {
     required this.id,
     required this.pinEnabled,
     this.pin,
+    this.digitalSignature,
     required this.invoicePrefix,
     required this.invoiceNextNumber,
     required this.createdAt,
@@ -28,6 +30,7 @@ class SettingsModel extends Equatable {
     String? id,
     bool? pinEnabled,
     String? pin,
+    String? digitalSignature,
     String? invoicePrefix,
     int? invoiceNextNumber,
     DateTime? createdAt,
@@ -39,6 +42,7 @@ class SettingsModel extends Equatable {
       id: id ?? this.id,
       pinEnabled: pinEnabled ?? this.pinEnabled,
       pin: pin ?? this.pin,
+      digitalSignature: digitalSignature ?? this.digitalSignature,
       invoicePrefix: invoicePrefix ?? this.invoicePrefix,
       invoiceNextNumber: invoiceNextNumber ?? this.invoiceNextNumber,
       createdAt: createdAt ?? this.createdAt,
@@ -53,6 +57,7 @@ class SettingsModel extends Equatable {
       'id': id,
       'pinEnabled': pinEnabled,
       'pin': pin,
+      'digitalSignature': digitalSignature,
       'invoicePrefix': invoicePrefix,
       'invoiceNextNumber': invoiceNextNumber,
       'createdAt': Timestamp.fromDate(createdAt),
@@ -67,6 +72,7 @@ class SettingsModel extends Equatable {
       id: documentId,
       pinEnabled: map['pinEnabled'] ?? false,
       pin: map['pin'],
+      digitalSignature: map['digitalSignature'],
       invoicePrefix: map['invoicePrefix'] ?? 'INV-',
       invoiceNextNumber: map['invoiceNextNumber']?.toInt() ?? 1,
       createdAt: (map['createdAt'] as Timestamp?)?.toDate() ?? DateTime.now(),
@@ -86,6 +92,7 @@ class SettingsModel extends Equatable {
         id,
         pinEnabled,
         pin,
+        digitalSignature,
         invoicePrefix,
         invoiceNextNumber,
         createdAt,

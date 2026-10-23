@@ -3,7 +3,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:image_picker/image_picker.dart';
 import '../../../../core/theme/app_colors.dart';
+import '../../../../core/providers/firebase_providers.dart';
 import '../../../../shared/widgets/custom_text_field.dart';
+import '../../../authentication/presentation/providers/auth_provider.dart';
 import '../../domain/business_model.dart';
 import '../../data/business_repository.dart';
 import '../../providers/business_providers.dart';
@@ -105,7 +107,26 @@ class _BusinessProfileScreenState extends ConsumerState<BusinessProfileScreen> {
     setState(() => _saving = true);
     try {
       final repo = ref.read(businessRepositoryProvider);
+      final storage = ref.read(storageServiceProvider);
+      final userId = ref.read(authUserIdProvider) ?? 'common';
       final now = DateTime.now();
+
+      // If a new local image was picked (not starting with http), upload to Firebase Storage
+      String? uploadedLogoUrl = _logoUrl;
+      if (_logoUrl != null &&
+          _logoUrl!.isNotEmpty &&
+          !_logoUrl!.startsWith('http://') &&
+          !_logoUrl!.startsWith('https://')) {
+        final localFile = File(_logoUrl!);
+        if (await localFile.exists()) {
+          final ext = _logoUrl!.split('.').last;
+          final storagePath = 'users/$userId/business_logo_${DateTime.now().millisecondsSinceEpoch}.$ext';
+          final downloadUrl = await storage.uploadFile(path: storagePath, file: localFile);
+          if (downloadUrl != null) {
+            uploadedLogoUrl = downloadUrl;
+          }
+        }
+      }
 
       final gstVal = _gstCtrl.text.trim().isEmpty ? null : _gstCtrl.text.trim().toUpperCase();
       // Auto derive PAN from GST if PAN is empty (standard: chars 3 to 12)
@@ -131,7 +152,7 @@ class _BusinessProfileScreenState extends ConsumerState<BusinessProfileScreen> {
           'bankIfsc': _bankIfscCtrl.text.trim().isEmpty ? null : _bankIfscCtrl.text.trim().toUpperCase(),
           'upiId': _upiIdCtrl.text.trim().isEmpty ? null : _upiIdCtrl.text.trim(),
           'termsAndConditions': _termsCtrl.text.trim().isEmpty ? null : _termsCtrl.text.trim(),
-          'logoUrl': _logoUrl,
+          'logoUrl': uploadedLogoUrl,
         });
       } else {
         final id = 'primary';
@@ -152,7 +173,7 @@ class _BusinessProfileScreenState extends ConsumerState<BusinessProfileScreen> {
           bankIfsc: _bankIfscCtrl.text.trim().isEmpty ? null : _bankIfscCtrl.text.trim().toUpperCase(),
           upiId: _upiIdCtrl.text.trim().isEmpty ? null : _upiIdCtrl.text.trim(),
           termsAndConditions: _termsCtrl.text.trim().isEmpty ? null : _termsCtrl.text.trim(),
-          logoUrl: _logoUrl,
+          logoUrl: uploadedLogoUrl,
           invoicePrefix: 'INV-',
           invoiceStartNumber: 1,
           createdAt: now,

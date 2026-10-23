@@ -7,7 +7,9 @@ import 'package:printing/printing.dart';
 
 import '../features/invoices/domain/invoice_model.dart';
 import '../features/customers/domain/customer_model.dart';
+import '../features/products/domain/product_model.dart';
 import '../features/settings/domain/business_model.dart';
+import '../features/settings/domain/settings_model.dart';
 
 /// Defines the available PDF invoice template styles.
 enum InvoiceTemplateStyle {
@@ -47,11 +49,35 @@ class InvoicePdfService {
   static const _classicBgLight = PdfColor.fromInt(0xFFFAFAFA);
   static const _classicDivider = PdfColor.fromInt(0xFFE0E0E0);
 
+  /// Safely resolves the logo image bytes whether stored locally or via HTTP/HTTPS URL.
+  static Future<Uint8List?> _resolveLogoBytes(String? logoUrl) async {
+    if (logoUrl == null || logoUrl.trim().isEmpty) return null;
+    final url = logoUrl.trim();
+    try {
+      if (url.startsWith('http://') || url.startsWith('https://')) {
+        final request = await HttpClient().getUrl(Uri.parse(url));
+        final response = await request.close();
+        if (response.statusCode == 200) {
+          final bytes = await response.fold<List<int>>([], (prev, elem) => prev..addAll(elem));
+          return Uint8List.fromList(bytes);
+        }
+      } else {
+        final file = File(url);
+        if (await file.exists()) {
+          return await file.readAsBytes();
+        }
+      }
+    } catch (_) {}
+    return null;
+  }
+
   /// Generates the raw PDF bytes for an invoice.
   static Future<Uint8List> generateInvoicePdfBytes({
     required InvoiceModel invoice,
     required CustomerModel? customer,
     required BusinessModel? business,
+    SettingsModel? settings,
+    List<ProductModel>? products,
     required double amountPaid,
     InvoiceTemplateStyle style = InvoiceTemplateStyle.eInvoiceStatutory,
   }) async {
@@ -60,6 +86,8 @@ class InvoicePdfService {
     // Load fonts that support the Rupee symbol (₹)
     final ttf = await PdfGoogleFonts.notoSansRegular();
     final ttfBold = await PdfGoogleFonts.notoSansBold();
+
+    final logoBytes = await _resolveLogoBytes(business?.logoUrl);
 
     final outstanding = (invoice.total - amountPaid).clamp(0.0, double.infinity);
 
@@ -73,6 +101,9 @@ class InvoicePdfService {
               invoice: invoice,
               customer: customer,
               business: business,
+              logoBytes: logoBytes,
+              settings: settings,
+              products: products,
               amountPaid: amountPaid,
               outstanding: outstanding,
               ttf: ttf,
@@ -90,6 +121,7 @@ class InvoicePdfService {
             _buildExecutiveHeader(
               invoice: invoice,
               business: business,
+              logoBytes: logoBytes,
               ttf: ttf,
               ttfBold: ttfBold,
             ),
@@ -111,6 +143,8 @@ class InvoicePdfService {
             _buildExecutiveBottomSection(
               invoice: invoice,
               business: business,
+              settings: settings,
+              products: products,
               amountPaid: amountPaid,
               outstanding: outstanding,
               ttf: ttf,
@@ -138,6 +172,7 @@ class InvoicePdfService {
               invoice: invoice,
               customer: customer,
               business: business,
+              logoBytes: logoBytes,
               amountPaid: amountPaid,
               outstanding: outstanding,
               ttf: ttf,
@@ -164,6 +199,8 @@ class InvoicePdfService {
     required InvoiceModel invoice,
     required CustomerModel? customer,
     required BusinessModel? business,
+    SettingsModel? settings,
+    List<ProductModel>? products,
     required double amountPaid,
     InvoiceTemplateStyle style = InvoiceTemplateStyle.eInvoiceStatutory,
   }) async {
@@ -171,6 +208,8 @@ class InvoicePdfService {
       invoice: invoice,
       customer: customer,
       business: business,
+      settings: settings,
+      products: products,
       amountPaid: amountPaid,
       style: style,
     );
@@ -195,6 +234,7 @@ class InvoicePdfService {
   static pw.Widget _buildExecutiveHeader({
     required InvoiceModel invoice,
     required BusinessModel? business,
+    Uint8List? logoBytes,
     required pw.Font ttf,
     required pw.Font ttfBold,
   }) {
@@ -265,10 +305,7 @@ class InvoicePdfService {
               child: pw.Column(
                 crossAxisAlignment: pw.CrossAxisAlignment.start,
                 children: [
-                  if (business?.logoUrl != null &&
-                      business!.logoUrl!.isNotEmpty &&
-                      !business.logoUrl!.startsWith('http') &&
-                      File(business.logoUrl!).existsSync()) ...[
+                  if (logoBytes != null && logoBytes.isNotEmpty) ...[
                     pw.Container(
                       margin: const pw.EdgeInsets.only(bottom: 8),
                       padding: const pw.EdgeInsets.all(3),
@@ -277,7 +314,7 @@ class InvoicePdfService {
                         borderRadius: const pw.BorderRadius.all(pw.Radius.circular(8)),
                       ),
                       child: pw.Image(
-                        pw.MemoryImage(File(business.logoUrl!).readAsBytesSync()),
+                        pw.MemoryImage(logoBytes),
                         height: 46,
                         width: 46,
                       ),
@@ -721,6 +758,8 @@ class InvoicePdfService {
   static pw.Widget _buildExecutiveBottomSection({
     required InvoiceModel invoice,
     required BusinessModel? business,
+    SettingsModel? settings,
+    List<ProductModel>? products,
     required double amountPaid,
     required double outstanding,
     required pw.Font ttf,
@@ -735,6 +774,36 @@ class InvoicePdfService {
         (business.bankAccount?.isNotEmpty == true ||
             business.bankName?.isNotEmpty == true ||
             business.bankIfsc?.isNotEmpty == true);
+
+    // Calculate tax breakdown
+    double totalCgst = 0.0;
+    double totalSgst = 0.0;
+    double totalIgst = 0.0;
+    final Set<double> cgstRates = {};
+    final Set<double> sgstRates = {};
+    final Set<double> igstRates = {};
+
+    for (final item in invoice.items) {
+      final product = products?.where((p) => p.id == item.productId).firstOrNull;
+      if (product != null) {
+        if (product.cgst > 0) {
+          totalCgst += (item.subtotal * product.cgst) / 100;
+          cgstRates.add(product.cgst);
+        }
+        if (product.sgst > 0) {
+          totalSgst += (item.subtotal * product.sgst) / 100;
+          sgstRates.add(product.sgst);
+        }
+        if (product.igst > 0) {
+          totalIgst += (product.igst * item.quantity);
+          igstRates.add(product.igst);
+        }
+      } else {
+        final half = item.gstAmount / 2;
+        totalCgst += half;
+        totalSgst += half;
+      }
+    }
 
     return pw.Column(
       crossAxisAlignment: pw.CrossAxisAlignment.start,
@@ -910,7 +979,43 @@ class InvoicePdfService {
                   children: [
                     _summaryLine('Subtotal', '₹ ${invoice.subtotal.toStringAsFixed(2)}', ttf, ttfBold),
                     pw.SizedBox(height: 6),
-                    _summaryLine('GST', '₹ ${invoice.gst.toStringAsFixed(2)}', ttf, ttfBold),
+                    if (totalCgst > 0 || (totalSgst == 0 && totalIgst == 0 && invoice.gst > 0)) ...[
+                      _summaryLine(
+                        cgstRates.isNotEmpty
+                            ? 'CGST (${cgstRates.map((r) => r % 1 == 0 ? r.toInt().toString() : r.toStringAsFixed(1)).join(', ')}%)'
+                            : 'CGST',
+                        '₹ ${totalCgst.toStringAsFixed(2)}',
+                        ttf,
+                        ttfBold,
+                      ),
+                      pw.SizedBox(height: 6),
+                    ],
+                    if (totalSgst > 0 || (totalCgst > 0 && totalIgst == 0 && invoice.gst > 0 && totalSgst > 0)) ...[
+                      _summaryLine(
+                        sgstRates.isNotEmpty
+                            ? 'SGST (${sgstRates.map((r) => r % 1 == 0 ? r.toInt().toString() : r.toStringAsFixed(1)).join(', ')}%)'
+                            : 'SGST',
+                        '₹ ${totalSgst.toStringAsFixed(2)}',
+                        ttf,
+                        ttfBold,
+                      ),
+                      pw.SizedBox(height: 6),
+                    ],
+                    if (totalIgst > 0) ...[
+                      _summaryLine(
+                        igstRates.isNotEmpty
+                            ? 'IGST (${igstRates.map((r) => '₹${r % 1 == 0 ? r.toInt() : r.toStringAsFixed(2)}').join(', ')})'
+                            : 'IGST',
+                        '₹ ${totalIgst.toStringAsFixed(2)}',
+                        ttf,
+                        ttfBold,
+                      ),
+                      pw.SizedBox(height: 6),
+                    ],
+                    if (totalCgst == 0 && totalSgst == 0 && totalIgst == 0 && invoice.gst > 0) ...[
+                      _summaryLine('GST', '₹ ${invoice.gst.toStringAsFixed(2)}', ttf, ttfBold),
+                      pw.SizedBox(height: 6),
+                    ],
                     pw.Padding(
                       padding: const pw.EdgeInsets.symmetric(vertical: 8),
                       child: pw.Divider(color: _borderLight, height: 1),
@@ -990,7 +1095,21 @@ class InvoicePdfService {
                     textAlign: pw.TextAlign.center,
                   ),
                   pw.SizedBox(height: 4),
-                  if (business?.signatureUrl != null &&
+                  if (settings?.digitalSignature != null && settings!.digitalSignature!.trim().isNotEmpty)
+                    pw.Container(
+                      height: 36,
+                      alignment: pw.Alignment.center,
+                      child: pw.Text(
+                        settings.digitalSignature!.trim(),
+                        style: pw.TextStyle(
+                          font: ttfBold,
+                          fontSize: 13,
+                          color: _navyPrimary,
+                        ),
+                        textAlign: pw.TextAlign.center,
+                      ),
+                    )
+                  else if (business?.signatureUrl != null &&
                       business!.signatureUrl!.isNotEmpty &&
                       !business.signatureUrl!.startsWith('http') &&
                       File(business.signatureUrl!).existsSync())
@@ -1108,6 +1227,7 @@ class InvoicePdfService {
     required InvoiceModel invoice,
     required CustomerModel? customer,
     required BusinessModel? business,
+    Uint8List? logoBytes,
     required double amountPaid,
     required double outstanding,
     required pw.Font ttf,
@@ -1138,14 +1258,11 @@ class InvoicePdfService {
                 pw.Column(
                   crossAxisAlignment: pw.CrossAxisAlignment.start,
                   children: [
-                    if (business?.logoUrl != null &&
-                        business!.logoUrl!.isNotEmpty &&
-                        !business.logoUrl!.startsWith('http') &&
-                        File(business.logoUrl!).existsSync())
+                    if (logoBytes != null && logoBytes.isNotEmpty)
                       pw.Container(
                         margin: const pw.EdgeInsets.only(bottom: 8),
                         child: pw.Image(
-                          pw.MemoryImage(File(business.logoUrl!).readAsBytesSync()),
+                          pw.MemoryImage(logoBytes),
                           height: 50,
                           width: 50,
                         ),
@@ -1340,13 +1457,15 @@ class InvoicePdfService {
     required InvoiceModel invoice,
     required CustomerModel? customer,
     required BusinessModel? business,
+    Uint8List? logoBytes,
+    SettingsModel? settings,
+    List<ProductModel>? products,
     required double amountPaid,
     required double outstanding,
     required pw.Font ttf,
     required pw.Font ttfBold,
   }) {
     final dateFormat = DateFormat('dd-MMM-yy');
-    final ackDateFormat = DateFormat('dd-MMM-yy HH:mm');
     final bizName = business?.businessName.toUpperCase() ?? 'BUSINESS NAME';
     final panNo = business?.panNumber ?? (business?.gstNumber != null && business!.gstNumber!.length >= 12 ? business.gstNumber!.substring(2, 12) : '');
     final arnNo = business?.arnNumber;
@@ -1366,15 +1485,43 @@ class InvoicePdfService {
       buyerStateCode = customer.gstNumber!.substring(0, 2);
     }
 
-    // QR Code data: Official Indian e-Invoice signed format or UPI payload fallback
-    final qrData = invoice.irn != null && invoice.irn!.isNotEmpty
-        ? 'GST_EINVOICE|${business?.gstNumber ?? ''}|${invoice.invoiceNumber}|${dateFormat.format(invoice.invoiceDate)}|${invoice.total.toStringAsFixed(2)}|${invoice.gst.toStringAsFixed(2)}|${customer?.gstNumber ?? 'URP'}|${invoice.irn}|${invoice.ackNo ?? ''}'
-        : (business?.upiId != null && business!.upiId!.isNotEmpty
-            ? 'upi://pay?pa=${business.upiId}&pn=${Uri.encodeComponent(business.businessName)}&am=${invoice.total.toStringAsFixed(2)}&cu=INR&tn=Invoice_${invoice.invoiceNumber}'
-            : 'INV:${invoice.invoiceNumber}|TOTAL:${invoice.total.toStringAsFixed(2)}');
+    // QR Code data: UPI payload or Invoice fallback
+    final qrData = (business?.upiId != null && business!.upiId!.isNotEmpty)
+        ? 'upi://pay?pa=${business.upiId}&pn=${Uri.encodeComponent(business.businessName)}&am=${invoice.total.toStringAsFixed(2)}&cu=INR&tn=Invoice_${invoice.invoiceNumber}'
+        : 'INV:${invoice.invoiceNumber}|TOTAL:${invoice.total.toStringAsFixed(2)}';
 
     final grandTotalQty = invoice.items.fold(0.0, (sum, i) => sum + i.quantity);
     final totalUnitsStr = '${grandTotalQty % 1 == 0 ? grandTotalQty.toInt() : grandTotalQty.toStringAsFixed(1)} Nos.';
+
+    // Breakdown tax by CGST, SGST, IGST
+    double totalCgst = 0.0;
+    double totalSgst = 0.0;
+    double totalIgst = 0.0;
+    final Set<double> cgstRates = {};
+    final Set<double> sgstRates = {};
+    final Set<double> igstRates = {};
+
+    for (final item in invoice.items) {
+      final product = products?.where((p) => p.id == item.productId).firstOrNull;
+      if (product != null) {
+        if (product.cgst > 0) {
+          totalCgst += (item.subtotal * product.cgst) / 100;
+          cgstRates.add(product.cgst);
+        }
+        if (product.sgst > 0) {
+          totalSgst += (item.subtotal * product.sgst) / 100;
+          sgstRates.add(product.sgst);
+        }
+        if (product.igst > 0) {
+          totalIgst += (product.igst * item.quantity);
+          igstRates.add(product.igst);
+        }
+      } else {
+        final half = item.gstAmount / 2;
+        totalCgst += half;
+        totalSgst += half;
+      }
+    }
 
     return pw.Container(
       decoration: pw.BoxDecoration(
@@ -1409,59 +1556,41 @@ class InvoicePdfService {
             ),
           ),
 
-          // ─── 2. IRN & Signed QR Code Bar ──────────────────
+          // ─── 2. Logo & QR Code Bar ────────────────────────
           pw.Container(
-            padding: const pw.EdgeInsets.all(6),
+            padding: const pw.EdgeInsets.symmetric(horizontal: 10, vertical: 6),
             decoration: const pw.BoxDecoration(
               border: pw.Border(bottom: pw.BorderSide(color: _gstBorderColor, width: 0.8)),
             ),
             child: pw.Row(
-              crossAxisAlignment: pw.CrossAxisAlignment.start,
+              crossAxisAlignment: pw.CrossAxisAlignment.center,
+              mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
               children: [
-                pw.Expanded(
-                  child: pw.Column(
-                    crossAxisAlignment: pw.CrossAxisAlignment.start,
-                    children: [
-                      pw.RichText(
-                        text: pw.TextSpan(
-                          children: [
-                            pw.TextSpan(text: 'IRN : ', style: pw.TextStyle(font: ttfBold, fontSize: 8)),
-                            pw.TextSpan(
-                              text: invoice.irn ?? 'N/A',
-                              style: pw.TextStyle(font: ttf, fontSize: 7.5),
-                            ),
-                          ],
-                        ),
-                      ),
-                      pw.SizedBox(height: 3),
-                      pw.Row(
-                        children: [
-                          pw.Text('Ack No. : ', style: pw.TextStyle(font: ttfBold, fontSize: 8)),
-                          pw.Text(invoice.ackNo ?? 'N/A', style: pw.TextStyle(font: ttf, fontSize: 8)),
-                        ],
-                      ),
-                      pw.SizedBox(height: 2),
-                      pw.Row(
-                        children: [
-                          pw.Text('Ack Date : ', style: pw.TextStyle(font: ttfBold, fontSize: 8)),
-                          pw.Text(
-                            invoice.ackDate != null ? ackDateFormat.format(invoice.ackDate!) : dateFormat.format(invoice.invoiceDate),
-                            style: pw.TextStyle(font: ttf, fontSize: 8),
-                          ),
-                        ],
-                      ),
-                    ],
+                // Left: Horizontal Logo without any box border or outline
+                if (logoBytes != null && logoBytes.isNotEmpty)
+                  pw.Container(
+                    height: 48,
+                    child: pw.Image(
+                      pw.MemoryImage(logoBytes),
+                      fit: pw.BoxFit.contain,
+                      alignment: pw.Alignment.centerLeft,
+                    ),
+                  )
+                else
+                  pw.Text(
+                    bizName,
+                    style: pw.TextStyle(font: ttfBold, fontSize: 14, color: _gstBlack),
                   ),
-                ),
+                // Right: QR Code
                 pw.Container(
-                  width: 58,
-                  height: 58,
+                  width: 54,
+                  height: 54,
                   padding: const pw.EdgeInsets.all(2),
                   child: pw.BarcodeWidget(
                     barcode: pw.Barcode.qrCode(),
                     data: qrData,
-                    width: 54,
-                    height: 54,
+                    width: 50,
+                    height: 50,
                     color: _gstBlack,
                   ),
                 ),
@@ -1585,13 +1714,12 @@ class InvoicePdfService {
             ),
             columnWidths: const {
               0: pw.FlexColumnWidth(0.35), // Sl No
-              1: pw.FlexColumnWidth(2.5),  // Description
-              2: pw.FlexColumnWidth(0.85), // HSN/SAC
-              3: pw.FlexColumnWidth(0.75), // Quantity
-              4: pw.FlexColumnWidth(0.8),  // Rate
-              5: pw.FlexColumnWidth(0.55), // per
-              6: pw.FlexColumnWidth(0.5),  // Disc %
-              7: pw.FlexColumnWidth(1.0),  // Amount
+              1: pw.FlexColumnWidth(2.8),  // Description
+              2: pw.FlexColumnWidth(0.9),  // HSN/SAC
+              3: pw.FlexColumnWidth(0.8),  // Quantity
+              4: pw.FlexColumnWidth(0.85), // Rate
+              5: pw.FlexColumnWidth(0.6),  // per
+              6: pw.FlexColumnWidth(1.1),  // Amount
             },
             children: [
               // Header Row
@@ -1604,7 +1732,6 @@ class InvoicePdfService {
                   _tableCell('Quantity', ttfBold, align: pw.TextAlign.right),
                   _tableCell('Rate', ttfBold, align: pw.TextAlign.right),
                   _tableCell('per', ttfBold, align: pw.TextAlign.center),
-                  _tableCell('Disc.\n%', ttfBold, align: pw.TextAlign.center),
                   _tableCell('Amount', ttfBold, align: pw.TextAlign.right),
                 ],
               ),
@@ -1619,26 +1746,95 @@ class InvoicePdfService {
                     _tableCell('$idx', ttf, align: pw.TextAlign.center),
                     pw.Padding(
                       padding: const pw.EdgeInsets.all(4),
-                      child: pw.Column(
-                        crossAxisAlignment: pw.CrossAxisAlignment.start,
-                        children: [
-                          pw.Text(item.productName, style: pw.TextStyle(font: ttfBold, fontSize: 8.5)),
-                          pw.SizedBox(height: 2),
-                          // Tax class sub-lines (CGST/SGST Outward)
-                          pw.Text('C-GST - Outward @ 9%', style: pw.TextStyle(font: ttf, fontSize: 7, color: PdfColors.grey700)),
-                          pw.Text('S-GST - Outward @ 9%', style: pw.TextStyle(font: ttf, fontSize: 7, color: PdfColors.grey700)),
-                        ],
-                      ),
+                      child: pw.Text(item.productName, style: pw.TextStyle(font: ttfBold, fontSize: 8.5)),
                     ),
                     _tableCell(item.hsnCode ?? '-', ttf, align: pw.TextAlign.center),
                     _tableCell(qtyStr, ttfBold, align: pw.TextAlign.right),
                     _tableCell(item.unitPrice.toStringAsFixed(2), ttf, align: pw.TextAlign.right),
                     _tableCell(item.unit, ttf, align: pw.TextAlign.center),
-                    _tableCell(item.discountPercent > 0 ? '${item.discountPercent.toStringAsFixed(1)}%' : '', ttf, align: pw.TextAlign.center),
                     _tableCell(item.subtotal.toStringAsFixed(2), ttfBold, align: pw.TextAlign.right),
                   ],
                 );
               }),
+              // Tax Rows (CGST, SGST, IGST) as separate table rows
+              if (totalCgst > 0 || (totalSgst == 0 && totalIgst == 0 && invoice.gst > 0))
+                pw.TableRow(
+                  children: [
+                    _tableCell('', ttf),
+                    pw.Padding(
+                      padding: const pw.EdgeInsets.symmetric(horizontal: 4, vertical: 2.5),
+                      child: pw.Text(
+                        cgstRates.isNotEmpty
+                            ? 'CGST (${cgstRates.map((r) => r % 1 == 0 ? r.toInt().toString() : r.toStringAsFixed(1)).join(', ')}%)'
+                            : 'CGST',
+                        style: pw.TextStyle(font: ttfBold, fontSize: 6),
+                      ),
+                    ),
+                    _tableCell('', ttf),
+                    _tableCell('', ttf),
+                    _tableCell('', ttf),
+                    _tableCell('', ttf),
+                    _tableCell(totalCgst.toStringAsFixed(2), ttfBold, align: pw.TextAlign.right, fontSize: 6),
+                  ],
+                ),
+              if (totalSgst > 0 || (totalCgst > 0 && totalIgst == 0 && invoice.gst > 0 && totalSgst > 0))
+                pw.TableRow(
+                  children: [
+                    _tableCell('', ttf),
+                    pw.Padding(
+                      padding: const pw.EdgeInsets.symmetric(horizontal: 4, vertical: 2.5),
+                      child: pw.Text(
+                        sgstRates.isNotEmpty
+                            ? 'SGST (${sgstRates.map((r) => r % 1 == 0 ? r.toInt().toString() : r.toStringAsFixed(1)).join(', ')}%)'
+                            : 'SGST',
+                        style: pw.TextStyle(font: ttfBold, fontSize: 6),
+                      ),
+                    ),
+                    _tableCell('', ttf),
+                    _tableCell('', ttf),
+                    _tableCell('', ttf),
+                    _tableCell('', ttf),
+                    _tableCell(totalSgst.toStringAsFixed(2), ttfBold, align: pw.TextAlign.right, fontSize: 6),
+                  ],
+                ),
+              if (totalIgst > 0)
+                pw.TableRow(
+                  children: [
+                    _tableCell('', ttf),
+                    pw.Padding(
+                      padding: const pw.EdgeInsets.symmetric(horizontal: 4, vertical: 2.5),
+                      child: pw.Text(
+                        igstRates.isNotEmpty
+                            ? 'IGST (${igstRates.map((r) => '₹${r % 1 == 0 ? r.toInt() : r.toStringAsFixed(2)}').join(', ')})'
+                            : 'IGST',
+                        style: pw.TextStyle(font: ttfBold, fontSize: 6),
+                      ),
+                    ),
+                    _tableCell('', ttf),
+                    _tableCell('', ttf),
+                    _tableCell('', ttf),
+                    _tableCell('', ttf),
+                    _tableCell(totalIgst.toStringAsFixed(2), ttfBold, align: pw.TextAlign.right, fontSize: 6),
+                  ],
+                ),
+              if (totalCgst == 0 && totalSgst == 0 && totalIgst == 0 && invoice.gst > 0)
+                pw.TableRow(
+                  children: [
+                    _tableCell('', ttf),
+                    pw.Padding(
+                      padding: const pw.EdgeInsets.symmetric(horizontal: 4, vertical: 2.5),
+                      child: pw.Text(
+                        'GST',
+                        style: pw.TextStyle(font: ttfBold, fontSize: 6),
+                      ),
+                    ),
+                    _tableCell('', ttf),
+                    _tableCell('', ttf),
+                    _tableCell('', ttf),
+                    _tableCell('', ttf),
+                    _tableCell(invoice.gst.toStringAsFixed(2), ttfBold, align: pw.TextAlign.right, fontSize: 6),
+                  ],
+                ),
               // Table Total Row
               pw.TableRow(
                 decoration: const pw.BoxDecoration(
@@ -1651,16 +1847,9 @@ class InvoicePdfService {
                   _tableCell(totalUnitsStr, ttfBold, align: pw.TextAlign.right),
                   _tableCell('', ttf),
                   _tableCell('', ttf),
-                  _tableCell('', ttf),
                   pw.Padding(
                     padding: const pw.EdgeInsets.all(4),
-                    child: pw.Column(
-                      crossAxisAlignment: pw.CrossAxisAlignment.end,
-                      children: [
-                        pw.Text('₹ ${invoice.total.toStringAsFixed(2)}', style: pw.TextStyle(font: ttfBold, fontSize: 9.5)),
-                        pw.Text('E. & O.E.', style: pw.TextStyle(font: ttf, fontSize: 6.5)),
-                      ],
-                    ),
+                    child: pw.Text('₹ ${invoice.total.toStringAsFixed(2)}', style: pw.TextStyle(font: ttfBold, fontSize: 9.5), textAlign: pw.TextAlign.right),
                   ),
                 ],
               ),
@@ -1678,7 +1867,7 @@ class InvoicePdfService {
                 children: [
                   pw.TextSpan(text: 'Amount Chargeable (in words) : ', style: pw.TextStyle(font: ttf, fontSize: 8)),
                   pw.TextSpan(
-                    text: 'INR ${_convertNumberToWords(invoice.total.toInt())} Only',
+                    text: 'INR ${_convertAmountToWordsWithPaisa(invoice.total)} Only',
                     style: pw.TextStyle(font: ttfBold, fontSize: 8.5),
                   ),
                 ],
@@ -1686,98 +1875,6 @@ class InvoicePdfService {
             ),
           ),
 
-          // ─── 6. Separate GST Tax Breakdown Table ─────────────────
-          pw.Table(
-            border: const pw.TableBorder(
-              bottom: pw.BorderSide(color: _gstBorderColor, width: 0.8),
-              verticalInside: pw.BorderSide(color: _gstBorderColor, width: 0.8),
-            ),
-            columnWidths: const {
-              0: pw.FlexColumnWidth(1.2), // HSN/SAC
-              1: pw.FlexColumnWidth(1.2), // Taxable Value
-              2: pw.FlexColumnWidth(1.4), // Central Tax
-              3: pw.FlexColumnWidth(1.4), // State Tax
-              4: pw.FlexColumnWidth(1.2), // Total Tax Amount
-            },
-            children: [
-              // Tax Header Row 1
-              pw.TableRow(
-                decoration: const pw.BoxDecoration(color: _gstBgHeader),
-                children: [
-                  _taxCell('HSN/SAC', ttfBold, align: pw.TextAlign.center),
-                  _taxCell('Taxable\nValue', ttfBold, align: pw.TextAlign.right),
-                  pw.Column(
-                    children: [
-                      pw.Padding(
-                        padding: const pw.EdgeInsets.symmetric(vertical: 2),
-                        child: pw.Text('Central Tax', style: pw.TextStyle(font: ttfBold, fontSize: 7.5)),
-                      ),
-                      pw.Container(height: 0.5, color: _gstBorderColor),
-                      pw.Row(
-                        children: [
-                          pw.Expanded(child: pw.Center(child: pw.Text('Rate', style: pw.TextStyle(font: ttfBold, fontSize: 7)))),
-                          pw.Container(width: 0.5, height: 12, color: _gstBorderColor),
-                          pw.Expanded(child: pw.Center(child: pw.Text('Amount', style: pw.TextStyle(font: ttfBold, fontSize: 7)))),
-                        ],
-                      ),
-                    ],
-                  ),
-                  pw.Column(
-                    children: [
-                      pw.Padding(
-                        padding: const pw.EdgeInsets.symmetric(vertical: 2),
-                        child: pw.Text('State Tax', style: pw.TextStyle(font: ttfBold, fontSize: 7.5)),
-                      ),
-                      pw.Container(height: 0.5, color: _gstBorderColor),
-                      pw.Row(
-                        children: [
-                          pw.Expanded(child: pw.Center(child: pw.Text('Rate', style: pw.TextStyle(font: ttfBold, fontSize: 7)))),
-                          pw.Container(width: 0.5, height: 12, color: _gstBorderColor),
-                          pw.Expanded(child: pw.Center(child: pw.Text('Amount', style: pw.TextStyle(font: ttfBold, fontSize: 7)))),
-                        ],
-                      ),
-                    ],
-                  ),
-                  _taxCell('Total\nTax Amount', ttfBold, align: pw.TextAlign.right),
-                ],
-              ),
-              // Tax Data Rows (grouping items by HSN/SAC)
-              ..._buildTaxBreakdownRows(invoice, ttf, ttfBold),
-              // Tax Total Row
-              pw.TableRow(
-                decoration: const pw.BoxDecoration(
-                  border: pw.Border(top: pw.BorderSide(color: _gstBorderColor, width: 0.8)),
-                ),
-                children: [
-                  _taxCell('Total', ttfBold, align: pw.TextAlign.right),
-                  _taxCell(invoice.subtotal.toStringAsFixed(2), ttfBold, align: pw.TextAlign.right),
-                  pw.Row(
-                    children: [
-                      pw.Expanded(child: pw.Container()),
-                      pw.Expanded(
-                        child: pw.Padding(
-                          padding: const pw.EdgeInsets.all(3),
-                          child: pw.Text((invoice.gst / 2).toStringAsFixed(2), style: pw.TextStyle(font: ttfBold, fontSize: 8), textAlign: pw.TextAlign.right),
-                        ),
-                      ),
-                    ],
-                  ),
-                  pw.Row(
-                    children: [
-                      pw.Expanded(child: pw.Container()),
-                      pw.Expanded(
-                        child: pw.Padding(
-                          padding: const pw.EdgeInsets.all(3),
-                          child: pw.Text((invoice.gst / 2).toStringAsFixed(2), style: pw.TextStyle(font: ttfBold, fontSize: 8), textAlign: pw.TextAlign.right),
-                        ),
-                      ),
-                    ],
-                  ),
-                  _taxCell(invoice.gst.toStringAsFixed(2), ttfBold, align: pw.TextAlign.right),
-                ],
-              ),
-            ],
-          ),
 
           // ─── 7. Tax Amount in Words Banner ─────────────────────────
           pw.Container(
@@ -1790,7 +1887,7 @@ class InvoicePdfService {
                 children: [
                   pw.TextSpan(text: 'Tax Amount (in words) : ', style: pw.TextStyle(font: ttf, fontSize: 8)),
                   pw.TextSpan(
-                    text: 'INR ${_convertNumberToWords(invoice.gst.toInt())} Only',
+                    text: 'INR ${_convertAmountToWordsWithPaisa(invoice.gst)} Only',
                     style: pw.TextStyle(font: ttfBold, fontSize: 8.5),
                   ),
                 ],
@@ -1839,11 +1936,27 @@ class InvoicePdfService {
                   pw.Container(
                     padding: const pw.EdgeInsets.all(6),
                     child: pw.Column(
-                      crossAxisAlignment: pw.CrossAxisAlignment.end,
-                      mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+                      crossAxisAlignment: pw.CrossAxisAlignment.stretch,
+                      mainAxisAlignment: pw.MainAxisAlignment.end,
                       children: [
-                        pw.Text('for $bizName', style: pw.TextStyle(font: ttfBold, fontSize: 8.5)),
-                        pw.SizedBox(height: 45),
+                        pw.SizedBox(height: 24),
+                        if (settings?.digitalSignature != null && settings!.digitalSignature!.trim().isNotEmpty)
+                          pw.Container(
+                            height: 32,
+                            alignment: pw.Alignment.center,
+                            child: pw.Text(
+                              settings.digitalSignature!.trim(),
+                              style: pw.TextStyle(
+                                font: ttfBold,
+                                fontSize: 13,
+                                color: _gstBlack,
+                              ),
+                              textAlign: pw.TextAlign.center,
+                            ),
+                          )
+                        else
+                          pw.SizedBox(height: 32),
+                        pw.SizedBox(height: 4),
                         pw.Center(
                           child: pw.Text('Authorized Signatory', style: pw.TextStyle(font: ttfBold, fontSize: 8.5)),
                         ),
@@ -1955,76 +2068,36 @@ class InvoicePdfService {
     );
   }
 
-  static pw.Widget _tableCell(String text, pw.Font font, {pw.TextAlign align = pw.TextAlign.left}) {
+  static pw.Widget _tableCell(String text, pw.Font font, {pw.TextAlign align = pw.TextAlign.left, double? fontSize}) {
     return pw.Padding(
       padding: const pw.EdgeInsets.all(4),
       child: pw.Text(
         text,
-        style: pw.TextStyle(font: font, fontSize: 8),
+        style: pw.TextStyle(font: font, fontSize: fontSize ?? 8),
         textAlign: align,
       ),
     );
   }
 
-  static pw.Widget _taxCell(String text, pw.Font font, {pw.TextAlign align = pw.TextAlign.left}) {
-    return pw.Padding(
-      padding: const pw.EdgeInsets.all(3),
-      child: pw.Text(
-        text,
-        style: pw.TextStyle(font: font, fontSize: 7.5),
-        textAlign: align,
-      ),
-    );
-  }
 
-  static List<pw.TableRow> _buildTaxBreakdownRows(InvoiceModel invoice, pw.Font ttf, pw.Font ttfBold) {
-    // Group items by HSN/SAC
-    final Map<String, List<InvoiceItem>> grouped = {};
-    for (final item in invoice.items) {
-      final hsn = (item.hsnCode != null && item.hsnCode!.isNotEmpty) ? item.hsnCode! : 'N/A';
-      grouped.putIfAbsent(hsn, () => []).add(item);
+
+  /// Converts an amount (with rupees and paisa) into verbal Indian English representation
+  static String _convertAmountToWordsWithPaisa(double amount) {
+    if (amount < 0) amount = 0;
+    final totalPaisa = (amount * 100).round();
+    final rupees = totalPaisa ~/ 100;
+    final paisa = totalPaisa % 100;
+
+    if (rupees == 0 && paisa == 0) return 'Zero Rupees';
+
+    final parts = <String>[];
+    if (rupees > 0) {
+      parts.add('${_convertNumberToWords(rupees)} Rupees');
     }
-
-    return grouped.entries.map((entry) {
-      final hsn = entry.key;
-      final items = entry.value;
-      final taxable = items.fold(0.0, (sum, i) => sum + i.subtotal);
-      final totalGst = items.fold(0.0, (sum, i) => sum + i.gstAmount);
-      final cgst = totalGst / 2;
-      final sgst = totalGst / 2;
-
-      return pw.TableRow(
-        children: [
-          _taxCell(hsn, ttf, align: pw.TextAlign.center),
-          _taxCell(taxable.toStringAsFixed(2), ttf, align: pw.TextAlign.right),
-          pw.Row(
-            children: [
-              pw.Expanded(child: pw.Center(child: pw.Text('9%', style: pw.TextStyle(font: ttf, fontSize: 7)))),
-              pw.Container(width: 0.5, height: 14, color: _gstBorderColor),
-              pw.Expanded(
-                child: pw.Padding(
-                  padding: const pw.EdgeInsets.all(3),
-                  child: pw.Text(cgst.toStringAsFixed(2), style: pw.TextStyle(font: ttf, fontSize: 7.5), textAlign: pw.TextAlign.right),
-                ),
-              ),
-            ],
-          ),
-          pw.Row(
-            children: [
-              pw.Expanded(child: pw.Center(child: pw.Text('9%', style: pw.TextStyle(font: ttf, fontSize: 7)))),
-              pw.Container(width: 0.5, height: 14, color: _gstBorderColor),
-              pw.Expanded(
-                child: pw.Padding(
-                  padding: const pw.EdgeInsets.all(3),
-                  child: pw.Text(sgst.toStringAsFixed(2), style: pw.TextStyle(font: ttf, fontSize: 7.5), textAlign: pw.TextAlign.right),
-                ),
-              ),
-            ],
-          ),
-          _taxCell(totalGst.toStringAsFixed(2), ttf, align: pw.TextAlign.right),
-        ],
-      );
-    }).toList();
+    if (paisa > 0) {
+      parts.add('${_convertNumberToWords(paisa)} Paisa');
+    }
+    return parts.join(' and ');
   }
 
   /// Converts a positive integer into verbal Indian English representation (Crores, Lakhs, Thousands, Hundreds)

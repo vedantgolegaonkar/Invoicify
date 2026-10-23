@@ -1,5 +1,3 @@
-import 'dart:convert';
-import 'package:crypto/crypto.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:uuid/uuid.dart';
@@ -14,12 +12,9 @@ import '../../providers/order_providers.dart';
 import '../../../invoices/providers/invoice_providers.dart';
 import '../../../invoices/domain/invoice_model.dart';
 import '../../../invoices/data/invoice_repository.dart';
-import '../../../settings/data/settings_repository.dart';
-import '../../../settings/domain/settings_model.dart';
 import '../../../inventory/data/inventory_repository.dart';
 import '../../../inventory/domain/inventory_transaction_model.dart';
 import '../../../products/data/product_repository.dart';
-import '../../../settings/providers/business_providers.dart';
 import '../../../../services/notification_service.dart';
 class CreateEditOrderScreen extends ConsumerStatefulWidget {
   final String? orderId;
@@ -361,88 +356,7 @@ class _CreateEditOrderScreenState extends ConsumerState<CreateEditOrderScreen> {
           debugPrint('Order create sync delayed: $e');
         }
 
-        // Auto-generate invoice
-        try {
-          final invoiceRepo = ref.read(invoiceRepositoryProvider);
-          
-          String invNumber = '';
-          SettingsModel? settings;
-          try {
-            final settingsList = await ref.read(settingsRepositoryProvider).getAll();
-            settings = settingsList.isNotEmpty ? settingsList.first : null;
-            final prefix = settings?.invoicePrefix ?? 'INV-';
-            final nextNum = settings?.invoiceNextNumber ?? 1;
-            invNumber = '$prefix${nextNum.toString().padLeft(3, '0')}';
-          } catch (e) {
-            debugPrint('Error calculating invoice number: $e');
-            invNumber = 'INV-${DateTime.now().millisecondsSinceEpoch.toString().substring(7)}';
-          }
-
-          final invoiceItems = _items.map((i) => InvoiceItem(
-            productId: i.productId,
-            productName: i.productName,
-            hsnCode: i.hsnCode,
-            quantity: i.quantity,
-            unitPrice: i.unitPrice,
-            subtotal: i.subtotal,
-            gstAmount: i.gstAmount,
-            total: i.total,
-          )).toList();
-
-          final business = ref.read(primaryBusinessProvider);
-          final supplierGst = business?.gstNumber ?? '27AAACH7409R1ZZ';
-          final finYear = now.month >= 4
-              ? '${now.year}-${(now.year + 1).toString().substring(2)}'
-              : '${now.year - 1}-${now.year.toString().substring(2)}';
-          final irnPayload = '$supplierGst:$finYear:INV:$invNumber:${now.millisecondsSinceEpoch}';
-          final irn = sha256.convert(utf8.encode(irnPayload)).toString().toLowerCase();
-
-          final yearSuffix = now.year.toString().substring(2);
-          final month = now.month.toString().padLeft(2, '0');
-          final epochMicros = now.microsecondsSinceEpoch.toString();
-          final seq = epochMicros.substring(epochMicros.length - 11);
-          final ackNo = '$yearSuffix$month$seq';
-
-          final invoiceId = const Uuid().v4();
-          final invoice = InvoiceModel(
-            id: invoiceId,
-            customerId: _selectedCustomer!.id,
-            orderId: id,
-            invoiceNumber: invNumber,
-            invoiceDate: now,
-            items: invoiceItems,
-            subtotal: _subtotal,
-            gst: _gst,
-            total: _total,
-            status: InvoiceStatus.unpaid,
-            isDelivered: false,
-            notes: _notesController.text.trim().isEmpty ? null : _notesController.text.trim(),
-            irn: irn,
-            ackNo: ackNo,
-            ackDate: now,
-            paymentTerms: '30 Days',
-            buyerOrderNo: 'ORD-$id',
-            buyerOrderDate: now,
-            destination: _selectedCustomer?.address,
-            termsOfDelivery: 'Ex-Works',
-            createdAt: now,
-            updatedAt: now,
-          );
-          
-          try {
-            await invoiceRepo.create(invoice, invoiceId).timeout(const Duration(seconds: 2));
-            if (settings != null) {
-              await ref.read(settingsRepositoryProvider).update('default', {'invoiceNextNumber': settings.invoiceNextNumber + 1});
-            }
-          } catch (e) {
-            debugPrint('Invoice create sync delayed: $e');
-          }
-        } catch (e) {
-          debugPrint('Error auto-generating invoice: $e');
-          if (mounted) {
-            ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error auto-generating invoice: $e')));
-          }
-        }
+        // Automatic invoice generation removed per user request
       }
       
       if (mounted) {
@@ -702,7 +616,7 @@ class _CreateEditOrderScreenState extends ConsumerState<CreateEditOrderScreen> {
                               FittedBox(
                                 fit: BoxFit.scaleDown,
                                 child: Text(
-                                  '₹${item.total.toStringAsFixed(2)}', 
+                                  '₹${item.subtotal.toStringAsFixed(2)}', 
                                   style: const TextStyle(fontWeight: FontWeight.bold),
                                 ),
                               ),

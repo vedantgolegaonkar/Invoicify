@@ -14,8 +14,7 @@ class InvoiceSettingsScreen extends ConsumerStatefulWidget {
 
 class _InvoiceSettingsScreenState extends ConsumerState<InvoiceSettingsScreen> {
   final _formKey = GlobalKey<FormState>();
-  final _prefixController = TextEditingController();
-  final _nextNumberController = TextEditingController();
+  final _signatureController = TextEditingController();
   
   bool _isLoading = false;
   SettingsModel? _currentSettings;
@@ -33,21 +32,14 @@ class _InvoiceSettingsScreenState extends ConsumerState<InvoiceSettingsScreen> {
     if (mounted && settingsAsync != null) {
       setState(() {
         _currentSettings = settingsAsync;
-        _prefixController.text = settingsAsync.invoicePrefix;
-        _nextNumberController.text = settingsAsync.invoiceNextNumber.toString();
-      });
-    } else if (mounted) {
-      setState(() {
-        _prefixController.text = 'INV-';
-        _nextNumberController.text = '1';
+        _signatureController.text = settingsAsync.digitalSignature ?? '';
       });
     }
   }
 
   @override
   void dispose() {
-    _prefixController.dispose();
-    _nextNumberController.dispose();
+    _signatureController.dispose();
     super.dispose();
   }
 
@@ -58,13 +50,11 @@ class _InvoiceSettingsScreenState extends ConsumerState<InvoiceSettingsScreen> {
     
     try {
       final repository = ref.read(settingsRepositoryProvider);
-      final nextNum = int.tryParse(_nextNumberController.text.trim()) ?? 1;
-      final prefix = _prefixController.text.trim();
+      final signature = _signatureController.text.trim();
       
       if (_currentSettings != null) {
         await repository.update('default', {
-          'invoicePrefix': prefix,
-          'invoiceNextNumber': nextNum,
+          'digitalSignature': signature,
           'updatedAt': DateTime.now(),
         });
       } else {
@@ -72,8 +62,9 @@ class _InvoiceSettingsScreenState extends ConsumerState<InvoiceSettingsScreen> {
         final newSettings = SettingsModel(
           id: 'default',
           pinEnabled: false,
-          invoicePrefix: prefix,
-          invoiceNextNumber: nextNum,
+          digitalSignature: signature,
+          invoicePrefix: 'INV-',
+          invoiceNextNumber: 1,
           createdAt: now,
           updatedAt: now,
         );
@@ -82,7 +73,7 @@ class _InvoiceSettingsScreenState extends ConsumerState<InvoiceSettingsScreen> {
       
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Invoice settings saved successfully')),
+          const SnackBar(content: Text('Invoice signature saved successfully')),
         );
         Navigator.pop(context);
       }
@@ -113,34 +104,22 @@ class _InvoiceSettingsScreenState extends ConsumerState<InvoiceSettingsScreen> {
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               CustomTextField(
-                label: 'Invoice Prefix',
-                hint: 'e.g., INV-',
-                controller: _prefixController,
-                validator: (val) => val == null || val.isEmpty ? 'Prefix is required' : null,
-              ),
-              const SizedBox(height: 16),
-              CustomTextField(
-                label: 'Next Invoice Number',
-                hint: 'e.g., 1001',
-                keyboardType: TextInputType.number,
-                controller: _nextNumberController,
+                label: 'Digital Signature',
+                hint: 'Enter your name or signature text',
+                controller: _signatureController,
                 validator: (val) {
-                  if (val == null || val.isEmpty) return 'Number is required';
-                  if (int.tryParse(val) == null) return 'Must be a valid integer';
+                  if (val == null || val.trim().isEmpty) {
+                    return 'Signature is required';
+                  }
                   return null;
                 },
               ),
-              const SizedBox(height: 16),
-              Text('Signature', style: Theme.of(context).textTheme.titleMedium),
               const SizedBox(height: 8),
-              Container(
-                height: 100,
-                decoration: BoxDecoration(
-                  border: Border.all(color: Colors.grey.shade400, style: BorderStyle.solid),
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: const Center(
-                  child: Text('Tap to upload signature image (Coming Soon)', style: TextStyle(color: Colors.grey)),
+              Text(
+                'This digital signature will appear on all generated invoices in the Authorized Signatory section.',
+                style: TextStyle(
+                  fontSize: 12,
+                  color: Colors.grey.shade600,
                 ),
               ),
               const SizedBox(height: 24),

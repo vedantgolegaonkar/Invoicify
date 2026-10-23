@@ -9,11 +9,15 @@ import '../../providers/invoice_providers.dart';
 import '../../domain/invoice_model.dart';
 import '../../../customers/providers/customer_providers.dart';
 import '../../../customers/domain/customer_model.dart';
+import '../../../products/providers/product_providers.dart';
+import '../../../products/domain/product_model.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../orders/providers/order_providers.dart';
 import '../../../payments/providers/payment_providers.dart';
 import '../../../settings/providers/business_providers.dart';
 import '../../../settings/domain/business_model.dart';
+import '../../../settings/providers/settings_providers.dart';
+import '../../../settings/domain/settings_model.dart';
 import '../../../../services/invoice_pdf_service.dart';
 
 class InvoiceDetailsScreen extends ConsumerWidget {
@@ -25,9 +29,11 @@ class InvoiceDetailsScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final invoicesAsync = ref.watch(invoicesStreamProvider);
     final customersAsync = ref.watch(customersStreamProvider);
+    final productsAsync = ref.watch(productsStreamProvider);
     final ordersAsync = ref.watch(ordersStreamProvider);
     final paymentsAsync = ref.watch(paymentsStreamProvider);
     final business = ref.watch(primaryBusinessProvider);
+    final settings = ref.watch(settingsStreamProvider).value;
 
     return invoicesAsync.when(
       loading: () => Scaffold(appBar: AppBar(title: const Text('Invoice Details')), body: const Center(child: CircularProgressIndicator())),
@@ -43,6 +49,7 @@ class InvoiceDetailsScreen extends ConsumerWidget {
           final invoice = invoiceMatches.first;
 
           final customer = customersAsync.value?.where((c) => c.id == invoice.customerId).firstOrNull;
+          final products = productsAsync.value ?? [];
           
           final orders = ordersAsync.value ?? [];
           final isCancelled = orders.any((o) => o.id == invoice.orderId && o.status.name == 'cancelled');
@@ -53,6 +60,37 @@ class InvoiceDetailsScreen extends ConsumerWidget {
               .fold(0.0, (sum, p) => sum + p.amount);
           double outstanding = invoice.total - amountPaid;
           if (outstanding < 0) outstanding = 0;
+
+          // Breakdown tax by CGST, SGST, IGST
+          double totalCgst = 0.0;
+          double totalSgst = 0.0;
+          double totalIgst = 0.0;
+          final Set<double> cgstRates = {};
+          final Set<double> sgstRates = {};
+          final Set<double> igstRates = {};
+
+          for (final item in invoice.items) {
+            final product = products.where((p) => p.id == item.productId).firstOrNull;
+            if (product != null) {
+              if (product.cgst > 0) {
+                totalCgst += (item.subtotal * product.cgst) / 100;
+                cgstRates.add(product.cgst);
+              }
+              if (product.sgst > 0) {
+                totalSgst += (item.subtotal * product.sgst) / 100;
+                sgstRates.add(product.sgst);
+              }
+              if (product.igst > 0) {
+                totalIgst += (product.igst * item.quantity);
+                igstRates.add(product.igst);
+              }
+            } else {
+              // Fallback split if product not in catalog
+              final half = item.gstAmount / 2;
+              totalCgst += half;
+              totalSgst += half;
+            }
+          }
 
 
           return Scaffold(
@@ -282,7 +320,7 @@ class InvoiceDetailsScreen extends ConsumerWidget {
                                         ),
                                       ),
                                       Text(
-                                        '₹${item.total.toStringAsFixed(2)}',
+                                        '₹${item.subtotal.toStringAsFixed(2)}',
                                         style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
                                       ),
                                     ],
@@ -317,7 +355,37 @@ class InvoiceDetailsScreen extends ConsumerWidget {
                               const SizedBox(height: 20),
                               _buildSummaryRow('Subtotal', invoice.subtotal),
                               const SizedBox(height: 12),
-                              _buildSummaryRow('GST', invoice.gst),
+                              if (totalCgst > 0 || (totalSgst == 0 && totalIgst == 0 && invoice.gst > 0)) ...[
+                                _buildSummaryRow(
+                                  cgstRates.isNotEmpty
+                                      ? 'CGST (${cgstRates.map((r) => r % 1 == 0 ? r.toInt().toString() : r.toStringAsFixed(1)).join(', ')}%)'
+                                      : 'CGST',
+                                  totalCgst,
+                                ),
+                                const SizedBox(height: 12),
+                              ],
+                              if (totalSgst > 0 || (totalCgst > 0 && totalIgst == 0 && invoice.gst > 0 && totalSgst > 0)) ...[
+                                _buildSummaryRow(
+                                  sgstRates.isNotEmpty
+                                      ? 'SGST (${sgstRates.map((r) => r % 1 == 0 ? r.toInt().toString() : r.toStringAsFixed(1)).join(', ')}%)'
+                                      : 'SGST',
+                                  totalSgst,
+                                ),
+                                const SizedBox(height: 12),
+                              ],
+                              if (totalIgst > 0) ...[
+                                _buildSummaryRow(
+                                  igstRates.isNotEmpty
+                                      ? 'IGST (${igstRates.map((r) => '₹${r % 1 == 0 ? r.toInt() : r.toStringAsFixed(2)}').join(', ')})'
+                                      : 'IGST',
+                                  totalIgst,
+                                ),
+                                const SizedBox(height: 12),
+                              ],
+                              if (totalCgst == 0 && totalSgst == 0 && totalIgst == 0 && invoice.gst > 0) ...[
+                                _buildSummaryRow('GST', invoice.gst),
+                                const SizedBox(height: 12),
+                              ],
                               const Padding(
                                 padding: EdgeInsets.symmetric(vertical: 16),
                                 child: Divider(height: 1),
@@ -410,7 +478,7 @@ class InvoiceDetailsScreen extends ConsumerWidget {
                               child: SizedBox(
                                 height: 50,
                                 child: OutlinedButton.icon(
-                                  onPressed: () => _previewPdf(context, invoice, customer, business, amountPaid),
+                                  onPressed: () => _previewPdf(context, invoice, customer, business, settings, products, amountPaid),
                                   icon: const Icon(Icons.remove_red_eye_outlined),
                                   label: const Text('Preview', style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold)),
                                   style: OutlinedButton.styleFrom(
@@ -426,7 +494,7 @@ class InvoiceDetailsScreen extends ConsumerWidget {
                               child: SizedBox(
                                 height: 50,
                                 child: ElevatedButton.icon(
-                                  onPressed: () => _sharePdf(invoice, customer, business, amountPaid),
+                                  onPressed: () => _sharePdf(invoice, customer, business, settings, products, amountPaid),
                                   icon: const Icon(Icons.download_outlined),
                                   label: const Text('Download', style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold)),
                                   style: ElevatedButton.styleFrom(
@@ -476,6 +544,8 @@ class InvoiceDetailsScreen extends ConsumerWidget {
     InvoiceModel invoice,
     CustomerModel? customer,
     BusinessModel? business,
+    SettingsModel? settings,
+    List<ProductModel>? products,
     double amountPaid,
   ) {
     final rawCustomerName = (customer?.name ?? '').trim();
@@ -498,6 +568,8 @@ class InvoiceDetailsScreen extends ConsumerWidget {
               invoice: invoice,
               customer: customer,
               business: business,
+              settings: settings,
+              products: products,
               amountPaid: amountPaid,
             ),
             pdfFileName: filename,
@@ -516,12 +588,16 @@ class InvoiceDetailsScreen extends ConsumerWidget {
     InvoiceModel invoice,
     CustomerModel? customer,
     BusinessModel? business,
+    SettingsModel? settings,
+    List<ProductModel>? products,
     double amountPaid,
   ) async {
     await InvoicePdfService.shareInvoicePdf(
       invoice: invoice,
       customer: customer,
       business: business,
+      settings: settings,
+      products: products,
       amountPaid: amountPaid,
     );
   }

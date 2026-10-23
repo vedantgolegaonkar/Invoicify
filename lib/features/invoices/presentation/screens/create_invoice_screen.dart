@@ -1,5 +1,3 @@
-import 'dart:convert';
-import 'package:crypto/crypto.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:uuid/uuid.dart';
@@ -98,24 +96,6 @@ class _CreateInvoiceScreenState extends ConsumerState<CreateInvoiceScreen> {
   double get _gst => _items.fold(0, (sum, item) => sum + item.gstAmount);
   double get _total => _items.fold(0, (sum, item) => sum + item.total);
 
-  /// Generates a standardized 64-char IRN hash compliant with NIC GST e-Invoice standard
-  String _generateIrn(String supplierGst, String docNo, DateTime docDate) {
-    final finYear = docDate.month >= 4
-        ? '${docDate.year}-${(docDate.year + 1).toString().substring(2)}'
-        : '${docDate.year - 1}-${docDate.year.toString().substring(2)}';
-    final payload = '$supplierGst:$finYear:INV:$docNo:${docDate.millisecondsSinceEpoch}';
-    return sha256.convert(utf8.encode(payload)).toString().toLowerCase();
-  }
-
-  /// Generates a standardized 15-digit e-Invoice Ack Number
-  String _generateAckNo(DateTime date) {
-    final yearSuffix = date.year.toString().substring(2);
-    final month = date.month.toString().padLeft(2, '0');
-    final epochMicros = date.microsecondsSinceEpoch.toString();
-    final seq = epochMicros.substring(epochMicros.length - 11);
-    return '$yearSuffix$month$seq';
-  }
-
   Future<void> _saveInvoice() async {
     if (!_formKey.currentState!.validate()) return;
     if (_selectedCustomerId == null) {
@@ -156,10 +136,6 @@ class _CreateInvoiceScreenState extends ConsumerState<CreateInvoiceScreen> {
         }
       }
 
-      final supplierGst = business?.gstNumber ?? '27AAACH7409R1ZZ';
-      final irn = _generateIrn(supplierGst, invoiceNumber, now);
-      final ackNo = _generateAckNo(now);
-
       final invoice = InvoiceModel(
         id: id,
         customerId: _selectedCustomerId!,
@@ -173,9 +149,6 @@ class _CreateInvoiceScreenState extends ConsumerState<CreateInvoiceScreen> {
         status: InvoiceStatus.unpaid,
         isDelivered: false,
         notes: _notesController.text.trim().isEmpty ? null : _notesController.text.trim(),
-        irn: irn,
-        ackNo: ackNo,
-        ackDate: now,
         paymentTerms: _paymentTermsController.text.trim().isEmpty ? null : _paymentTermsController.text.trim(),
         buyerOrderNo: _buyerOrderNoController.text.trim().isEmpty ? null : _buyerOrderNoController.text.trim(),
         buyerOrderDate: _buyerOrderDate,
@@ -404,6 +377,15 @@ class _CreateInvoiceScreenState extends ConsumerState<CreateInvoiceScreen> {
                                 ? 'Stock: ${p.currentStock} | ₹${price.toStringAsFixed(2)}'
                                 : '₹${price.toStringAsFixed(2)}'),
                             onTap: () {
+                              if (price <= 0) {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  const SnackBar(
+                                    content: Text('Please add the rate for this product'),
+                                    duration: Duration(seconds: 2),
+                                  ),
+                                );
+                                return;
+                              }
                               Navigator.pop(context);
                               _addProduct(p, customer);
                             },
@@ -422,13 +404,25 @@ class _CreateInvoiceScreenState extends ConsumerState<CreateInvoiceScreen> {
   }
 
   void _addProduct(ProductModel product, CustomerModel customer) {
+    final price = customer.productPrices?[product.id] ?? 0.0;
+    if (price <= 0) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Please add the rate for this product'),
+            duration: Duration(seconds: 2),
+          ),
+        );
+      }
+      return;
+    }
+
     final existingIndex = _items.indexWhere((i) => i.productId == product.id);
     if (existingIndex >= 0) {
       final item = _items[existingIndex];
       _updateItemQuantity(existingIndex, item.quantity + 1);
     } else {
       final qty = 1.0;
-      final price = customer.productPrices?[product.id] ?? 0.0;
       final subtotal = price * qty;
       final gstAmount = (subtotal * (product.cgst + product.sgst) / 100) + (product.igst * qty);
 
@@ -597,7 +591,7 @@ class _CreateInvoiceScreenState extends ConsumerState<CreateInvoiceScreen> {
                               FittedBox(
                                 fit: BoxFit.scaleDown,
                                 child: Text(
-                                  '₹${item.total.toStringAsFixed(2)}', 
+                                  '₹${item.subtotal.toStringAsFixed(2)}', 
                                   style: const TextStyle(fontWeight: FontWeight.bold),
                                 ),
                               ),

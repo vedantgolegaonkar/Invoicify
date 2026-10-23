@@ -44,7 +44,6 @@ import '../features/settings/presentation/screens/legal_screen.dart';
 final GlobalKey<NavigatorState> _rootNavigatorKey = GlobalKey<NavigatorState>(debugLabel: 'root');
 final GlobalKey<NavigatorState> _shellNavigatorDashboardKey = GlobalKey<NavigatorState>(debugLabel: 'shellDashboard');
 final GlobalKey<NavigatorState> _shellNavigatorCustomersKey = GlobalKey<NavigatorState>(debugLabel: 'shellCustomers');
-final GlobalKey<NavigatorState> _shellNavigatorOrdersKey = GlobalKey<NavigatorState>(debugLabel: 'shellOrders');
 final GlobalKey<NavigatorState> _shellNavigatorInvoicesKey = GlobalKey<NavigatorState>(debugLabel: 'shellInvoices');
 final GlobalKey<NavigatorState> _shellNavigatorMoreKey = GlobalKey<NavigatorState>(debugLabel: 'shellMore');
 
@@ -110,31 +109,7 @@ final routerProvider = Provider<GoRouter>((ref) {
               ),
             ],
           ),
-          StatefulShellBranch(
-            navigatorKey: _shellNavigatorOrdersKey,
-            routes: [
-              GoRoute(
-                path: '/orders',
-                builder: (context, state) => const OrderListScreen(),
-                routes: [
-                  GoRoute(
-                    path: 'create',
-                    builder: (context, state) => const CreateEditOrderScreen(),
-                  ),
-                  GoRoute(
-                    path: ':id',
-                    builder: (context, state) => OrderDetailsScreen(orderId: state.pathParameters['id']!),
-                    routes: [
-                      GoRoute(
-                        path: 'edit',
-                        builder: (context, state) => CreateEditOrderScreen(orderId: state.pathParameters['id']),
-                      ),
-                    ],
-                  ),
-                ],
-              ),
-            ],
-          ),
+
           StatefulShellBranch(
             navigatorKey: _shellNavigatorInvoicesKey,
             routes: [
