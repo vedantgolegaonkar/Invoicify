@@ -1556,18 +1556,18 @@ class InvoicePdfService {
             ),
           ),
 
-          // ─── 2. Logo & QR Code Bar ────────────────────────
-          pw.Container(
-            padding: const pw.EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-            decoration: const pw.BoxDecoration(
-              border: pw.Border(bottom: pw.BorderSide(color: _gstBorderColor, width: 0.8)),
-            ),
-            child: pw.Row(
-              crossAxisAlignment: pw.CrossAxisAlignment.center,
-              mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
-              children: [
-                // Left: Horizontal Logo without any box border or outline
-                if (logoBytes != null && logoBytes.isNotEmpty)
+          // ─── 2. Logo & QR Code Bar (Only displayed if logo is present) ────────
+          if (logoBytes != null && logoBytes.isNotEmpty)
+            pw.Container(
+              padding: const pw.EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+              decoration: const pw.BoxDecoration(
+                border: pw.Border(bottom: pw.BorderSide(color: _gstBorderColor, width: 0.8)),
+              ),
+              child: pw.Row(
+                crossAxisAlignment: pw.CrossAxisAlignment.center,
+                mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+                children: [
+                  // Left: Horizontal Logo without any box border or outline
                   pw.Container(
                     height: 48,
                     child: pw.Image(
@@ -1575,28 +1575,23 @@ class InvoicePdfService {
                       fit: pw.BoxFit.contain,
                       alignment: pw.Alignment.centerLeft,
                     ),
-                  )
-                else
-                  pw.Text(
-                    bizName,
-                    style: pw.TextStyle(font: ttfBold, fontSize: 14, color: _gstBlack),
                   ),
-                // Right: QR Code
-                pw.Container(
-                  width: 54,
-                  height: 54,
-                  padding: const pw.EdgeInsets.all(2),
-                  child: pw.BarcodeWidget(
-                    barcode: pw.Barcode.qrCode(),
-                    data: qrData,
-                    width: 50,
-                    height: 50,
-                    color: _gstBlack,
+                  // Right: QR Code
+                  pw.Container(
+                    width: 54,
+                    height: 54,
+                    padding: const pw.EdgeInsets.all(2),
+                    child: pw.BarcodeWidget(
+                      barcode: pw.Barcode.qrCode(),
+                      data: qrData,
+                      width: 50,
+                      height: 50,
+                      color: _gstBlack,
+                    ),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
-          ),
 
           // ─── 3. Bilingual Seller & Buyer Box vs Dispatch Box ──────────
           pw.Table(
@@ -1914,9 +1909,6 @@ class InvoicePdfService {
                     child: pw.Column(
                       crossAxisAlignment: pw.CrossAxisAlignment.start,
                       children: [
-                        if (panNo.isNotEmpty)
-                          pw.Text('Company\'s PAN : $panNo', style: pw.TextStyle(font: ttfBold, fontSize: 8)),
-                        pw.SizedBox(height: 4),
                         pw.Text('Company\'s Bank Details :', style: pw.TextStyle(font: ttfBold, fontSize: 8, decoration: pw.TextDecoration.underline)),
                         pw.Text('Bank Name : ${business?.bankName ?? 'State Bank of India'}', style: pw.TextStyle(font: ttf, fontSize: 8)),
                         pw.Text('A/c No. : ${business?.bankAccount ?? '-'}', style: pw.TextStyle(font: ttfBold, fontSize: 8)),

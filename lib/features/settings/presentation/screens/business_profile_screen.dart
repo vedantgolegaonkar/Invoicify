@@ -270,11 +270,6 @@ class _BusinessProfileScreenState extends ConsumerState<BusinessProfileScreen> {
                   controller: _gstCtrl,
                 ),
                 CustomTextField(
-                  label: 'PAN Number',
-                  hint: 'e.g. AABCU9603R (auto-derived from GST if blank)',
-                  controller: _panCtrl,
-                ),
-                CustomTextField(
                   label: 'ARN Number',
                   hint: 'e.g. AA2703240012345 (optional)',
                   controller: _arnCtrl,

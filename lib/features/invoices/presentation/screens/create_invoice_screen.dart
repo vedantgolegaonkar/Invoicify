@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:intl/intl.dart';
 import 'package:uuid/uuid.dart';
 import '../../../../shared/widgets/custom_text_field.dart';
 import '../../domain/invoice_model.dart';
@@ -124,15 +125,15 @@ class _CreateInvoiceScreenState extends ConsumerState<CreateInvoiceScreen> {
       if (widget.invoiceId != null) {
         // We don't generate a new number on edit, we just use the existing one when updating
       } else {
+        final monthStr = DateFormat('MMM').format(now).toUpperCase(); // e.g. OCT, NOV
         try {
           final settingsList = await settingsRepo.getAll();
           settings = settingsList.isNotEmpty ? settingsList.first : null;
-          final prefix = settings?.invoicePrefix ?? 'INV-';
           final nextNum = settings?.invoiceNextNumber ?? 1;
-          invoiceNumber = '$prefix${nextNum.toString().padLeft(3, '0')}';
+          invoiceNumber = 'INV-$monthStr-${nextNum.toString().padLeft(3, '0')}';
         } catch (e) {
           debugPrint('Error calculating invoice number: $e');
-          invoiceNumber = 'INV-${DateTime.now().millisecondsSinceEpoch.toString().substring(7)}';
+          invoiceNumber = 'INV-$monthStr-${DateTime.now().millisecondsSinceEpoch.toString().substring(7)}';
         }
       }
 
