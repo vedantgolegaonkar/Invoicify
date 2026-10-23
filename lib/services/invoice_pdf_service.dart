@@ -54,7 +54,13 @@ class InvoicePdfService {
     if (logoUrl == null || logoUrl.trim().isEmpty) return null;
     final url = logoUrl.trim();
     try {
-      if (url.startsWith('http://') || url.startsWith('https://')) {
+      if (url.startsWith('data:image')) {
+        final commaIdx = url.indexOf(',');
+        if (commaIdx != -1) {
+          final b64 = url.substring(commaIdx + 1);
+          return Uint8List.fromList(base64Decode(b64));
+        }
+      } else if (url.startsWith('http://') || url.startsWith('https://')) {
         final request = await HttpClient().getUrl(Uri.parse(url));
         final response = await request.close();
         if (response.statusCode == 200) {
@@ -67,7 +73,9 @@ class InvoicePdfService {
           return await file.readAsBytes();
         }
       }
-    } catch (_) {}
+    } catch (e) {
+      debugPrint('Error resolving logo bytes: $e');
+    }
     return null;
   }
 

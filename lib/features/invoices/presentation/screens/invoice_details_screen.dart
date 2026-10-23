@@ -12,6 +12,12 @@ import '../../../customers/domain/customer_model.dart';
 import '../../../products/providers/product_providers.dart';
 import '../../../products/domain/product_model.dart';
 import '../../../../core/theme/app_colors.dart';
+import '../../data/invoice_repository.dart';
+import '../../../customers/data/customer_repository.dart';
+import '../../../products/data/product_repository.dart';
+import '../../../inventory/data/inventory_repository.dart';
+import '../../../inventory/domain/inventory_transaction_model.dart';
+import 'package:uuid/uuid.dart';
 import '../../../orders/providers/order_providers.dart';
 import '../../../payments/providers/payment_providers.dart';
 import '../../../settings/providers/business_providers.dart';
@@ -100,6 +106,18 @@ class InvoiceDetailsScreen extends ConsumerWidget {
               elevation: 0,
               backgroundColor: AppColors.primary,
               foregroundColor: Colors.white,
+              actions: [
+                IconButton(
+                  icon: const Icon(Icons.edit_outlined),
+                  tooltip: 'Edit Invoice',
+                  onPressed: () => context.push('/invoices/$invoiceId/edit'),
+                ),
+                IconButton(
+                  icon: const Icon(Icons.delete_outline),
+                  tooltip: 'Delete Invoice',
+                  onPressed: () => _confirmDelete(context, ref, invoice),
+                ),
+              ],
             ),
             body: SingleChildScrollView(
             child: Column(
@@ -600,6 +618,98 @@ class InvoiceDetailsScreen extends ConsumerWidget {
       products: products,
       amountPaid: amountPaid,
     );
+  }
+
+  Future<void> _confirmDelete(BuildContext context, WidgetRef ref, InvoiceModel invoice) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Delete Invoice'),
+        content: Text(
+          'Are you sure you want to delete invoice #${invoice.invoiceNumber}? This will revert the customer outstanding balance and restore deducted inventory.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.red,
+              foregroundColor: Colors.white,
+            ),
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('Delete'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed == true && context.mounted) {
+      try {
+        final invoiceRepo = ref.read(invoiceRepositoryProvider);
+        final customerRepo = ref.read(customerRepositoryProvider);
+        final productRepo = ref.read(productRepositoryProvider);
+        final inventoryRepo = ref.read(inventoryRepositoryProvider);
+
+        // 1. Revert customer outstanding
+        try {
+          final cust = await customerRepo.getById(invoice.customerId);
+          if (cust != null) {
+            final newOutstanding = (cust.currentOutstanding - invoice.total).clamp(0.0, double.infinity);
+            await customerRepo.update(invoice.customerId, {'currentOutstanding': newOutstanding});
+          }
+        } catch (e) {
+          debugPrint('Error reverting customer outstanding on delete: $e');
+        }
+
+        // 2. Restore inventory if created standalone (dummy_order_id)
+        if (invoice.orderId == 'dummy_order_id') {
+          try {
+            final currentProducts = await productRepo.getAll();
+            final now = DateTime.now();
+            for (final item in invoice.items) {
+              final prod = currentProducts.where((p) => p.id == item.productId).firstOrNull;
+              if (prod != null) {
+                final restoredStock = prod.currentStock + item.quantity;
+                await productRepo.update(item.productId, {'currentStock': restoredStock});
+                final txnId = const Uuid().v4();
+                final txn = InventoryTransactionModel(
+                  id: txnId,
+                  productId: item.productId,
+                  type: TransactionType.stockIn,
+                  quantity: item.quantity,
+                  previousStock: prod.currentStock,
+                  newStock: restoredStock,
+                  remarks: 'Invoice Deleted: ${invoice.invoiceNumber}',
+                  createdAt: now,
+                  updatedAt: now,
+                );
+                await inventoryRepo.create(txn, txnId);
+              }
+            }
+          } catch (e) {
+            debugPrint('Error restoring stock on invoice delete: $e');
+          }
+        }
+
+        // 3. Soft delete invoice
+        await invoiceRepo.softDelete(invoice.id);
+
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Invoice deleted successfully')),
+          );
+          context.pop();
+        }
+      } catch (e) {
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Error deleting invoice: $e')),
+          );
+        }
+      }
+    }
   }
 
   Widget _buildCard({required Widget child}) {

@@ -1,4 +1,6 @@
 import 'dart:io';
+import 'dart:convert';
+import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:image_picker/image_picker.dart';
@@ -111,19 +113,33 @@ class _BusinessProfileScreenState extends ConsumerState<BusinessProfileScreen> {
       final userId = ref.read(authUserIdProvider) ?? 'common';
       final now = DateTime.now();
 
-      // If a new local image was picked (not starting with http), upload to Firebase Storage
+      // If a new local image was picked (not starting with http or data:), upload or encode
       String? uploadedLogoUrl = _logoUrl;
       if (_logoUrl != null &&
           _logoUrl!.isNotEmpty &&
           !_logoUrl!.startsWith('http://') &&
-          !_logoUrl!.startsWith('https://')) {
+          !_logoUrl!.startsWith('https://') &&
+          !_logoUrl!.startsWith('data:image')) {
         final localFile = File(_logoUrl!);
         if (await localFile.exists()) {
-          final ext = _logoUrl!.split('.').last;
+          final ext = _logoUrl!.split('.').last.toLowerCase();
           final storagePath = 'users/$userId/business_logo_${DateTime.now().millisecondsSinceEpoch}.$ext';
-          final downloadUrl = await storage.uploadFile(path: storagePath, file: localFile);
-          if (downloadUrl != null) {
-            uploadedLogoUrl = downloadUrl;
+          
+          try {
+            final downloadUrl = await storage.uploadFile(path: storagePath, file: localFile);
+            if (downloadUrl != null && downloadUrl.isNotEmpty) {
+              uploadedLogoUrl = downloadUrl;
+            } else {
+              // Firebase Storage upload failed/returned null - fallback to base64 encoding so logo is saved in Firestore database
+              final bytes = await localFile.readAsBytes();
+              final mimeType = ext == 'png' ? 'image/png' : 'image/jpeg';
+              uploadedLogoUrl = 'data:$mimeType;base64,${base64Encode(bytes)}';
+            }
+          } catch (storageErr) {
+            debugPrint('Firebase Storage error: $storageErr. Falling back to base64 storage.');
+            final bytes = await localFile.readAsBytes();
+            final mimeType = ext == 'png' ? 'image/png' : 'image/jpeg';
+            uploadedLogoUrl = 'data:$mimeType;base64,${base64Encode(bytes)}';
           }
         }
       }
@@ -236,11 +252,21 @@ class _BusinessProfileScreenState extends ConsumerState<BusinessProfileScreen> {
                         CircleAvatar(
                           radius: 50,
                           backgroundColor: AppColors.secondary,
-                          backgroundImage: _logoUrl != null && _logoUrl!.isNotEmpty 
-                            ? (_logoUrl!.startsWith('http') 
-                                ? NetworkImage(_logoUrl!) as ImageProvider
-                                : FileImage(File(_logoUrl!)))
-                            : null,
+                          backgroundImage: () {
+                            if (_logoUrl == null || _logoUrl!.isEmpty) return null;
+                            if (_logoUrl!.startsWith('data:image')) {
+                              final commaIdx = _logoUrl!.indexOf(',');
+                              if (commaIdx != -1) {
+                                final b64 = _logoUrl!.substring(commaIdx + 1);
+                                return MemoryImage(base64Decode(b64)) as ImageProvider;
+                              }
+                            }
+                            if (_logoUrl!.startsWith('http://') || _logoUrl!.startsWith('https://')) {
+                              return NetworkImage(_logoUrl!) as ImageProvider;
+                            }
+                            final file = File(_logoUrl!);
+                            return file.existsSync() ? FileImage(file) : null;
+                          }(),
                           child: _logoUrl == null || _logoUrl!.isEmpty 
                             ? const Icon(Icons.storefront, size: 50, color: AppColors.primary)
                             : null,

@@ -233,6 +233,7 @@ class _CreateInvoiceScreenState extends ConsumerState<CreateInvoiceScreen> {
         );
         final updatedInvoice = invoice.copyWith(
           invoiceNumber: oldInvoice.invoiceNumber,
+          invoiceDate: oldInvoice.invoiceDate,
           orderId: oldInvoice.orderId,
           status: oldInvoice.status,
           isDelivered: oldInvoice.isDelivered,
@@ -241,11 +242,26 @@ class _CreateInvoiceScreenState extends ConsumerState<CreateInvoiceScreen> {
         await repository.update(id, updatedInvoice.toMap());
         
         try {
-          final currentCust = await customerRepo.getById(_selectedCustomerId!);
-          if (currentCust != null) {
-            final diff = _total - oldInvoice.total;
-            final newOutstanding = (currentCust.currentOutstanding + diff).clamp(0.0, double.infinity);
-            await customerRepo.update(_selectedCustomerId!, {'currentOutstanding': newOutstanding});
+          if (oldInvoice.customerId != _selectedCustomerId) {
+            // Revert from old customer
+            final oldCust = await customerRepo.getById(oldInvoice.customerId);
+            if (oldCust != null) {
+              final reverted = (oldCust.currentOutstanding - oldInvoice.total).clamp(0.0, double.infinity);
+              await customerRepo.update(oldInvoice.customerId, {'currentOutstanding': reverted});
+            }
+            // Add to new customer
+            final newCust = await customerRepo.getById(_selectedCustomerId!);
+            if (newCust != null) {
+              final updated = (newCust.currentOutstanding + _total).clamp(0.0, double.infinity);
+              await customerRepo.update(_selectedCustomerId!, {'currentOutstanding': updated});
+            }
+          } else {
+            final currentCust = await customerRepo.getById(_selectedCustomerId!);
+            if (currentCust != null) {
+              final diff = _total - oldInvoice.total;
+              final newOutstanding = (currentCust.currentOutstanding + diff).clamp(0.0, double.infinity);
+              await customerRepo.update(_selectedCustomerId!, {'currentOutstanding': newOutstanding});
+            }
           }
         } catch (e) {
           debugPrint('Error updating customer outstanding on edit: $e');
