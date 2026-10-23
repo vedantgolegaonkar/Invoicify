@@ -4,6 +4,7 @@ import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:image_cropper/image_cropper.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/providers/firebase_providers.dart';
 import '../../../../shared/widgets/custom_text_field.dart';
@@ -93,9 +94,38 @@ class _BusinessProfileScreenState extends ConsumerState<BusinessProfileScreen> {
       final ImagePicker picker = ImagePicker();
       final XFile? image = await picker.pickImage(source: ImageSource.gallery);
       if (image != null) {
-        setState(() {
-          _logoUrl = image.path;
-        });
+        final croppedFile = await ImageCropper().cropImage(
+          sourcePath: image.path,
+          uiSettings: [
+            AndroidUiSettings(
+              toolbarTitle: 'Crop Business Logo',
+              toolbarColor: AppColors.primary,
+              toolbarWidgetColor: Colors.white,
+              initAspectRatio: CropAspectRatioPreset.square,
+              lockAspectRatio: false,
+              aspectRatioPresets: [
+                CropAspectRatioPreset.square,
+                CropAspectRatioPreset.original,
+                CropAspectRatioPreset.ratio4x3,
+                CropAspectRatioPreset.ratio16x9,
+              ],
+            ),
+            IOSUiSettings(
+              title: 'Crop Business Logo',
+              aspectRatioPresets: [
+                CropAspectRatioPreset.square,
+                CropAspectRatioPreset.original,
+                CropAspectRatioPreset.ratio4x3,
+                CropAspectRatioPreset.ratio16x9,
+              ],
+            ),
+          ],
+        );
+        if (croppedFile != null) {
+          setState(() {
+            _logoUrl = croppedFile.path;
+          });
+        }
       }
     } catch (e) {
       if (mounted) {
@@ -111,9 +141,36 @@ class _BusinessProfileScreenState extends ConsumerState<BusinessProfileScreen> {
       final ImagePicker picker = ImagePicker();
       final XFile? image = await picker.pickImage(source: ImageSource.gallery);
       if (image != null) {
-        setState(() {
-          _paymentQrUrl = image.path;
-        });
+        final croppedFile = await ImageCropper().cropImage(
+          sourcePath: image.path,
+          uiSettings: [
+            AndroidUiSettings(
+              toolbarTitle: 'Crop Payment QR',
+              toolbarColor: AppColors.primary,
+              toolbarWidgetColor: Colors.white,
+              initAspectRatio: CropAspectRatioPreset.square,
+              lockAspectRatio: false,
+              aspectRatioPresets: [
+                CropAspectRatioPreset.square,
+                CropAspectRatioPreset.original,
+                CropAspectRatioPreset.ratio4x3,
+              ],
+            ),
+            IOSUiSettings(
+              title: 'Crop Payment QR',
+              aspectRatioPresets: [
+                CropAspectRatioPreset.square,
+                CropAspectRatioPreset.original,
+                CropAspectRatioPreset.ratio4x3,
+              ],
+            ),
+          ],
+        );
+        if (croppedFile != null) {
+          setState(() {
+            _paymentQrUrl = croppedFile.path;
+          });
+        }
       }
     } catch (e) {
       if (mounted) {
