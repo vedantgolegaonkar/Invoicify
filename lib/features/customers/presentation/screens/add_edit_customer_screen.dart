@@ -135,12 +135,16 @@ class _AddEditCustomerScreenState extends ConsumerState<AddEditCustomerScreen> {
       final now = DateTime.now();
       final id = widget.customerId ?? const Uuid().v4();
 
-      // Preserve existing outstanding if editing
+      // Preserve existing outstanding, productPrices, and notes if editing
       double outstanding = 0.0;
+      Map<String, double>? productPrices;
+      String? existingNotes;
       if (widget.customerId != null) {
         final customers = ref.read(customersStreamProvider).value;
         final existing = customers?.where((c) => c.id == widget.customerId).firstOrNull;
         outstanding = existing?.currentOutstanding ?? 0.0;
+        productPrices = existing?.productPrices;
+        existingNotes = existing?.notes;
       }
 
       final whatsapp = _whatsappSameAsMobile
@@ -158,6 +162,8 @@ class _AddEditCustomerScreenState extends ConsumerState<AddEditCustomerScreen> {
         email: _emailController.text.trim().isEmpty ? null : _emailController.text.trim(),
         address: _addressController.text.trim(),
         currentOutstanding: outstanding,
+        productPrices: productPrices,
+        notes: existingNotes,
         gstNumber: _gstController.text.trim().isEmpty ? null : _gstController.text.trim().toUpperCase(),
         stateName: _stateNameController.text.trim().isEmpty ? null : _stateNameController.text.trim(),
         stateCode: _stateCodeController.text.trim().isEmpty ? null : _stateCodeController.text.trim(),

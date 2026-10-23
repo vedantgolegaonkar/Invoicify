@@ -233,6 +233,10 @@ class _CreateInvoiceScreenState extends ConsumerState<CreateInvoiceScreen> {
         );
         final invoiceMap = invoice.toMap();
         invoiceMap['invoiceNumber'] = oldInvoice.invoiceNumber;
+        invoiceMap['orderId'] = oldInvoice.orderId;
+        invoiceMap['status'] = oldInvoice.status.name;
+        invoiceMap['isDelivered'] = oldInvoice.isDelivered;
+        invoiceMap['deliveryDate'] = oldInvoice.deliveryDate != null ? Timestamp.fromDate(oldInvoice.deliveryDate!) : null;
         await repository.update(id, invoiceMap);
         
         try {
