@@ -51,10 +51,10 @@ class InvoicePdfService {
   static const _classicBgLight = PdfColor.fromInt(0xFFFAFAFA);
   static const _classicDivider = PdfColor.fromInt(0xFFE0E0E0);
 
-  /// Safely resolves the logo image bytes whether stored locally or via HTTP/HTTPS URL.
-  static Future<Uint8List?> _resolveLogoBytes(String? logoUrl) async {
-    if (logoUrl == null || logoUrl.trim().isEmpty) return null;
-    final url = logoUrl.trim();
+  /// Safely resolves image bytes whether stored as base64 data URI, HTTP/HTTPS URL, or local file.
+  static Future<Uint8List?> _resolveImageBytes(String? imageUrl) async {
+    if (imageUrl == null || imageUrl.trim().isEmpty) return null;
+    final url = imageUrl.trim();
     try {
       if (url.startsWith('data:image')) {
         final commaIdx = url.indexOf(',');
@@ -76,7 +76,7 @@ class InvoicePdfService {
         }
       }
     } catch (e) {
-      debugPrint('Error resolving logo bytes: $e');
+      debugPrint('Error resolving image bytes: $e');
     }
     return null;
   }
@@ -97,7 +97,8 @@ class InvoicePdfService {
     final ttf = await PdfGoogleFonts.notoSansRegular();
     final ttfBold = await PdfGoogleFonts.notoSansBold();
 
-    final logoBytes = await _resolveLogoBytes(business?.logoUrl);
+    final logoBytes = await _resolveImageBytes(business?.logoUrl);
+    final paymentQrBytes = await _resolveImageBytes(business?.paymentQrUrl);
 
     final outstanding = (invoice.total - amountPaid).clamp(0.0, double.infinity);
 
@@ -112,6 +113,7 @@ class InvoicePdfService {
               customer: customer,
               business: business,
               logoBytes: logoBytes,
+              paymentQrBytes: paymentQrBytes,
               settings: settings,
               products: products,
               amountPaid: amountPaid,
@@ -153,6 +155,7 @@ class InvoicePdfService {
             _buildExecutiveBottomSection(
               invoice: invoice,
               business: business,
+              paymentQrBytes: paymentQrBytes,
               settings: settings,
               products: products,
               amountPaid: amountPaid,
@@ -768,6 +771,7 @@ class InvoicePdfService {
   static pw.Widget _buildExecutiveBottomSection({
     required InvoiceModel invoice,
     required BusinessModel? business,
+    Uint8List? paymentQrBytes,
     SettingsModel? settings,
     List<ProductModel>? products,
     required double amountPaid,
@@ -779,6 +783,7 @@ class InvoicePdfService {
     final upiLink = hasUpi
         ? 'upi://pay?pa=${business!.upiId}&pn=${Uri.encodeComponent(business.businessName)}&am=${outstanding.toStringAsFixed(2)}&cu=INR'
         : null;
+    final hasCustomQr = paymentQrBytes != null && paymentQrBytes.isNotEmpty;
 
     final hasBank = business != null &&
         (business.bankAccount?.isNotEmpty == true ||
@@ -827,8 +832,8 @@ class InvoicePdfService {
               child: pw.Column(
                 crossAxisAlignment: pw.CrossAxisAlignment.start,
                 children: [
-                  // UPI Quick Pay Box
-                  if (hasUpi && upiLink != null) ...[
+                  // UPI Quick Pay Box / Payment QR Box
+                  if (hasCustomQr || (hasUpi && upiLink != null)) ...[
                     pw.Container(
                       padding: const pw.EdgeInsets.all(10),
                       decoration: pw.BoxDecoration(
@@ -846,13 +851,20 @@ class InvoicePdfService {
                               borderRadius: const pw.BorderRadius.all(pw.Radius.circular(4)),
                               border: pw.Border.all(color: _borderLight),
                             ),
-                            child: pw.BarcodeWidget(
-                              barcode: pw.Barcode.qrCode(),
-                              data: upiLink,
-                              width: 68,
-                              height: 68,
-                              color: _navyPrimary,
-                            ),
+                            child: hasCustomQr
+                                ? pw.Image(
+                                    pw.MemoryImage(paymentQrBytes),
+                                    width: 68,
+                                    height: 68,
+                                    fit: pw.BoxFit.contain,
+                                  )
+                                : pw.BarcodeWidget(
+                                    barcode: pw.Barcode.qrCode(),
+                                    data: upiLink!,
+                                    width: 68,
+                                    height: 68,
+                                    color: _navyPrimary,
+                                  ),
                           ),
                           pw.SizedBox(width: 12),
                           pw.Expanded(
@@ -869,14 +881,15 @@ class InvoicePdfService {
                                   ),
                                 ),
                                 pw.SizedBox(height: 3),
-                                pw.Text(
-                                  business!.upiId!,
-                                  style: pw.TextStyle(
-                                    font: ttfBold,
-                                    fontSize: 9.5,
-                                    color: _navyDark,
+                                if (hasUpi)
+                                  pw.Text(
+                                    business!.upiId!,
+                                    style: pw.TextStyle(
+                                      font: ttfBold,
+                                      fontSize: 9.5,
+                                      color: _navyDark,
+                                    ),
                                   ),
-                                ),
                                 pw.SizedBox(height: 2),
                                 pw.Text(
                                   'Works with GPay, PhonePe, Paytm, BHIM',
@@ -1468,6 +1481,7 @@ class InvoicePdfService {
     required CustomerModel? customer,
     required BusinessModel? business,
     Uint8List? logoBytes,
+    Uint8List? paymentQrBytes,
     SettingsModel? settings,
     List<ProductModel>? products,
     required double amountPaid,
@@ -1566,8 +1580,8 @@ class InvoicePdfService {
             ),
           ),
 
-          // ─── 2. Logo & QR Code Bar (Only displayed if logo is present) ────────
-          if (logoBytes != null && logoBytes.isNotEmpty)
+          // ─── 2. Logo & QR Code Bar (Only displayed if logo or QR is present) ────────
+          if ((logoBytes != null && logoBytes.isNotEmpty) || (paymentQrBytes != null && paymentQrBytes.isNotEmpty))
             pw.Container(
               padding: const pw.EdgeInsets.symmetric(horizontal: 10, vertical: 6),
               decoration: const pw.BoxDecoration(
@@ -1578,26 +1592,34 @@ class InvoicePdfService {
                 mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
                 children: [
                   // Left: Horizontal Logo without any box border or outline
-                  pw.Container(
-                    height: 48,
-                    child: pw.Image(
-                      pw.MemoryImage(logoBytes),
-                      fit: pw.BoxFit.contain,
-                      alignment: pw.Alignment.centerLeft,
-                    ),
-                  ),
-                  // Right: QR Code
+                  if (logoBytes != null && logoBytes.isNotEmpty)
+                    pw.Container(
+                      height: 48,
+                      child: pw.Image(
+                        pw.MemoryImage(logoBytes),
+                        fit: pw.BoxFit.contain,
+                        alignment: pw.Alignment.centerLeft,
+                      ),
+                    )
+                  else
+                    pw.SizedBox(),
+                  // Right: Payment QR Code
                   pw.Container(
                     width: 54,
                     height: 54,
                     padding: const pw.EdgeInsets.all(2),
-                    child: pw.BarcodeWidget(
-                      barcode: pw.Barcode.qrCode(),
-                      data: qrData,
-                      width: 50,
-                      height: 50,
-                      color: _gstBlack,
-                    ),
+                    child: paymentQrBytes != null && paymentQrBytes.isNotEmpty
+                        ? pw.Image(
+                            pw.MemoryImage(paymentQrBytes),
+                            fit: pw.BoxFit.contain,
+                          )
+                        : pw.BarcodeWidget(
+                            barcode: pw.Barcode.qrCode(),
+                            data: qrData,
+                            width: 50,
+                            height: 50,
+                            color: _gstBlack,
+                          ),
                   ),
                 ],
               ),

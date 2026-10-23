@@ -43,6 +43,7 @@ class _BusinessProfileScreenState extends ConsumerState<BusinessProfileScreen> {
   bool _saving = false;
   BusinessModel? _existing;
   String? _logoUrl;
+  String? _paymentQrUrl;
 
   @override
   void dispose() {
@@ -84,6 +85,7 @@ class _BusinessProfileScreenState extends ConsumerState<BusinessProfileScreen> {
     _upiIdCtrl.text = biz.upiId ?? '';
     _termsCtrl.text = biz.termsAndConditions ?? '';
     _logoUrl = biz.logoUrl;
+    _paymentQrUrl = biz.paymentQrUrl;
   }
 
   Future<void> _pickImage() async {
@@ -99,6 +101,24 @@ class _BusinessProfileScreenState extends ConsumerState<BusinessProfileScreen> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('Error picking image: $e')),
+        );
+      }
+    }
+  }
+
+  Future<void> _pickPaymentQr() async {
+    try {
+      final ImagePicker picker = ImagePicker();
+      final XFile? image = await picker.pickImage(source: ImageSource.gallery);
+      if (image != null) {
+        setState(() {
+          _paymentQrUrl = image.path;
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error picking Payment QR: $e')),
         );
       }
     }
@@ -144,6 +164,37 @@ class _BusinessProfileScreenState extends ConsumerState<BusinessProfileScreen> {
         }
       }
 
+      // If a new local payment QR was picked (not starting with http or data:), upload or encode
+      String? uploadedPaymentQrUrl = _paymentQrUrl;
+      if (_paymentQrUrl != null &&
+          _paymentQrUrl!.isNotEmpty &&
+          !_paymentQrUrl!.startsWith('http://') &&
+          !_paymentQrUrl!.startsWith('https://') &&
+          !_paymentQrUrl!.startsWith('data:image')) {
+        final localFile = File(_paymentQrUrl!);
+        if (await localFile.exists()) {
+          final ext = _paymentQrUrl!.split('.').last.toLowerCase();
+          final storagePath = 'users/$userId/payment_qr_${DateTime.now().millisecondsSinceEpoch}.$ext';
+          
+          try {
+            final downloadUrl = await storage.uploadFile(path: storagePath, file: localFile);
+            if (downloadUrl != null && downloadUrl.isNotEmpty) {
+              uploadedPaymentQrUrl = downloadUrl;
+            } else {
+              // Firebase Storage upload failed/returned null - fallback to base64 encoding so payment QR is saved in Firestore database
+              final bytes = await localFile.readAsBytes();
+              final mimeType = ext == 'png' ? 'image/png' : 'image/jpeg';
+              uploadedPaymentQrUrl = 'data:$mimeType;base64,${base64Encode(bytes)}';
+            }
+          } catch (storageErr) {
+            debugPrint('Firebase Storage error for QR: $storageErr. Falling back to base64 storage.');
+            final bytes = await localFile.readAsBytes();
+            final mimeType = ext == 'png' ? 'image/png' : 'image/jpeg';
+            uploadedPaymentQrUrl = 'data:$mimeType;base64,${base64Encode(bytes)}';
+          }
+        }
+      }
+
       final gstVal = _gstCtrl.text.trim().isEmpty ? null : _gstCtrl.text.trim().toUpperCase();
       // Auto derive PAN from GST if PAN is empty (standard: chars 3 to 12)
       String? panVal = _panCtrl.text.trim().isEmpty ? null : _panCtrl.text.trim().toUpperCase();
@@ -167,6 +218,7 @@ class _BusinessProfileScreenState extends ConsumerState<BusinessProfileScreen> {
           'bankAccount': _bankAccountCtrl.text.trim().isEmpty ? null : _bankAccountCtrl.text.trim(),
           'bankIfsc': _bankIfscCtrl.text.trim().isEmpty ? null : _bankIfscCtrl.text.trim().toUpperCase(),
           'upiId': _upiIdCtrl.text.trim().isEmpty ? null : _upiIdCtrl.text.trim(),
+          'paymentQrUrl': uploadedPaymentQrUrl,
           'termsAndConditions': _termsCtrl.text.trim().isEmpty ? null : _termsCtrl.text.trim(),
           'logoUrl': uploadedLogoUrl,
         });
@@ -188,6 +240,7 @@ class _BusinessProfileScreenState extends ConsumerState<BusinessProfileScreen> {
           bankAccount: _bankAccountCtrl.text.trim().isEmpty ? null : _bankAccountCtrl.text.trim(),
           bankIfsc: _bankIfscCtrl.text.trim().isEmpty ? null : _bankIfscCtrl.text.trim().toUpperCase(),
           upiId: _upiIdCtrl.text.trim().isEmpty ? null : _upiIdCtrl.text.trim(),
+          paymentQrUrl: uploadedPaymentQrUrl,
           termsAndConditions: _termsCtrl.text.trim().isEmpty ? null : _termsCtrl.text.trim(),
           logoUrl: uploadedLogoUrl,
           invoicePrefix: 'INV-',
@@ -359,6 +412,121 @@ class _BusinessProfileScreenState extends ConsumerState<BusinessProfileScreen> {
                   label: 'UPI ID',
                   hint: 'e.g. yourname@upi (used for QR on invoice)',
                   controller: _upiIdCtrl,
+                ),
+                const SizedBox(height: 16),
+                // Payment QR Image Field
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      'Payment QR (Optional)',
+                      style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: AppColors.textPrimary),
+                    ),
+                    const SizedBox(height: 8),
+                    Container(
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(color: Colors.grey.shade300),
+                      ),
+                      child: Row(
+                        children: [
+                          GestureDetector(
+                            onTap: _pickPaymentQr,
+                            child: Container(
+                              width: 80,
+                              height: 80,
+                              decoration: BoxDecoration(
+                                color: AppColors.secondary,
+                                borderRadius: BorderRadius.circular(8),
+                                border: Border.all(color: AppColors.primary.withValues(alpha: 0.3)),
+                              ),
+                              child: _paymentQrUrl != null && _paymentQrUrl!.isNotEmpty
+                                  ? ClipRRect(
+                                      borderRadius: BorderRadius.circular(8),
+                                      child: Image(
+                                        image: () {
+                                          if (_paymentQrUrl!.startsWith('data:image')) {
+                                            final commaIdx = _paymentQrUrl!.indexOf(',');
+                                            if (commaIdx != -1) {
+                                              final b64 = _paymentQrUrl!.substring(commaIdx + 1);
+                                              return MemoryImage(base64Decode(b64)) as ImageProvider;
+                                            }
+                                          }
+                                          if (_paymentQrUrl!.startsWith('http://') || _paymentQrUrl!.startsWith('https://')) {
+                                            return NetworkImage(_paymentQrUrl!) as ImageProvider;
+                                          }
+                                          final file = File(_paymentQrUrl!);
+                                          return file.existsSync() ? FileImage(file) : null;
+                                        }() ?? const AssetImage('assets/placeholder.png'),
+                                        fit: BoxFit.cover,
+                                        errorBuilder: (context, error, stackTrace) => const Icon(
+                                          Icons.qr_code_2,
+                                          size: 40,
+                                          color: AppColors.primary,
+                                        ),
+                                      ),
+                                    )
+                                  : const Icon(Icons.qr_code_2, size: 40, color: AppColors.primary),
+                            ),
+                          ),
+                          const SizedBox(width: 16),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  _paymentQrUrl != null && _paymentQrUrl!.isNotEmpty
+                                      ? 'Payment QR Selected'
+                                      : 'No Payment QR uploaded',
+                                  style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13),
+                                ),
+                                const SizedBox(height: 4),
+                                const Text(
+                                  'Tap to upload your Google Pay, PhonePe, or UPI QR code image',
+                                  style: TextStyle(fontSize: 11, color: AppColors.textSecondary),
+                                ),
+                                const SizedBox(height: 8),
+                                Row(
+                                  children: [
+                                    OutlinedButton.icon(
+                                      onPressed: _pickPaymentQr,
+                                      icon: const Icon(Icons.upload_file, size: 16),
+                                      label: Text(
+                                        _paymentQrUrl != null && _paymentQrUrl!.isNotEmpty
+                                            ? 'Change'
+                                            : 'Upload QR',
+                                        style: const TextStyle(fontSize: 12),
+                                      ),
+                                      style: OutlinedButton.styleFrom(
+                                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                                        minimumSize: Size.zero,
+                                        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                                      ),
+                                    ),
+                                    if (_paymentQrUrl != null && _paymentQrUrl!.isNotEmpty) ...[
+                                      const SizedBox(width: 8),
+                                      TextButton.icon(
+                                        onPressed: () => setState(() => _paymentQrUrl = null),
+                                        icon: const Icon(Icons.delete_outline, size: 16, color: Colors.red),
+                                        label: const Text('Remove', style: TextStyle(fontSize: 12, color: Colors.red)),
+                                        style: TextButton.styleFrom(
+                                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+                                          minimumSize: Size.zero,
+                                          tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                                        ),
+                                      ),
+                                    ],
+                                  ],
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
                 ),
 
                 const SizedBox(height: 20),

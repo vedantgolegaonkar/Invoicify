@@ -22,6 +22,7 @@ class BusinessModel extends Equatable {
   final String? bankAccount;
   final String? bankIfsc;
   final String? upiId;
+  final String? paymentQrUrl;
   // Invoice footer
   final String? termsAndConditions;
   final DateTime createdAt;
@@ -49,6 +50,7 @@ class BusinessModel extends Equatable {
     this.bankAccount,
     this.bankIfsc,
     this.upiId,
+    this.paymentQrUrl,
     this.termsAndConditions,
     required this.createdAt,
     required this.updatedAt,
@@ -76,6 +78,7 @@ class BusinessModel extends Equatable {
     String? bankAccount,
     String? bankIfsc,
     String? upiId,
+    String? paymentQrUrl,
     String? termsAndConditions,
     DateTime? createdAt,
     DateTime? updatedAt,
@@ -102,6 +105,7 @@ class BusinessModel extends Equatable {
       bankAccount: bankAccount ?? this.bankAccount,
       bankIfsc: bankIfsc ?? this.bankIfsc,
       upiId: upiId ?? this.upiId,
+      paymentQrUrl: paymentQrUrl ?? this.paymentQrUrl,
       termsAndConditions: termsAndConditions ?? this.termsAndConditions,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
@@ -131,6 +135,7 @@ class BusinessModel extends Equatable {
       'bankAccount': bankAccount,
       'bankIfsc': bankIfsc,
       'upiId': upiId,
+      'paymentQrUrl': paymentQrUrl,
       'termsAndConditions': termsAndConditions,
       'createdAt': Timestamp.fromDate(createdAt),
       'updatedAt': Timestamp.fromDate(updatedAt),
@@ -160,6 +165,7 @@ class BusinessModel extends Equatable {
       bankAccount: map['bankAccount'],
       bankIfsc: map['bankIfsc'],
       upiId: map['upiId'],
+      paymentQrUrl: map['paymentQrUrl'],
       termsAndConditions: map['termsAndConditions'],
       createdAt: (map['createdAt'] as Timestamp?)?.toDate() ?? DateTime.now(),
       updatedAt: (map['updatedAt'] as Timestamp?)?.toDate() ?? DateTime.now(),
@@ -194,6 +200,7 @@ class BusinessModel extends Equatable {
         bankAccount,
         bankIfsc,
         upiId,
+        paymentQrUrl,
         termsAndConditions,
         createdAt,
         updatedAt,
