@@ -1591,7 +1591,7 @@ class InvoicePdfService {
                 crossAxisAlignment: pw.CrossAxisAlignment.center,
                 mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
                 children: [
-                  // Left: Horizontal Logo without any box border or outline
+                  // Left: Horizontal Logo without any box border or outline (hidden if not present)
                   if (logoBytes != null && logoBytes.isNotEmpty)
                     pw.Container(
                       height: 48,
@@ -1603,24 +1603,19 @@ class InvoicePdfService {
                     )
                   else
                     pw.SizedBox(),
-                  // Right: Payment QR Code
-                  pw.Container(
-                    width: 54,
-                    height: 54,
-                    padding: const pw.EdgeInsets.all(2),
-                    child: paymentQrBytes != null && paymentQrBytes.isNotEmpty
-                        ? pw.Image(
-                            pw.MemoryImage(paymentQrBytes),
-                            fit: pw.BoxFit.contain,
-                          )
-                        : pw.BarcodeWidget(
-                            barcode: pw.Barcode.qrCode(),
-                            data: qrData,
-                            width: 50,
-                            height: 50,
-                            color: _gstBlack,
-                          ),
-                  ),
+                  // Right: Payment QR Code (hidden if not present)
+                  if (paymentQrBytes != null && paymentQrBytes.isNotEmpty)
+                    pw.Container(
+                      width: 54,
+                      height: 54,
+                      padding: const pw.EdgeInsets.all(2),
+                      child: pw.Image(
+                        pw.MemoryImage(paymentQrBytes),
+                        fit: pw.BoxFit.contain,
+                      ),
+                    )
+                  else
+                    pw.SizedBox(),
                 ],
               ),
             ),
