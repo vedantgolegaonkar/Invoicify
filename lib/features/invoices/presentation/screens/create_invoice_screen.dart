@@ -231,13 +231,14 @@ class _CreateInvoiceScreenState extends ConsumerState<CreateInvoiceScreen> {
           (i) => i.id == widget.invoiceId,
           orElse: () => invoice,
         );
-        final invoiceMap = invoice.toMap();
-        invoiceMap['invoiceNumber'] = oldInvoice.invoiceNumber;
-        invoiceMap['orderId'] = oldInvoice.orderId;
-        invoiceMap['status'] = oldInvoice.status.name;
-        invoiceMap['isDelivered'] = oldInvoice.isDelivered;
-        invoiceMap['deliveryDate'] = oldInvoice.deliveryDate != null ? Timestamp.fromDate(oldInvoice.deliveryDate!) : null;
-        await repository.update(id, invoiceMap);
+        final updatedInvoice = invoice.copyWith(
+          invoiceNumber: oldInvoice.invoiceNumber,
+          orderId: oldInvoice.orderId,
+          status: oldInvoice.status,
+          isDelivered: oldInvoice.isDelivered,
+          deliveryDate: oldInvoice.deliveryDate,
+        );
+        await repository.update(id, updatedInvoice.toMap());
         
         try {
           final currentCust = await customerRepo.getById(_selectedCustomerId!);
