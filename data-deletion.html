@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Request Data Deletion - Invoicify</title>
+  <style>
+    :root {
+      --primary: #DC2626;
+      --primary-hover: #B91C1C;
+      --text-main: #1F2937;
+      --text-muted: #4B5563;
+      --bg-page: #F9FAFB;
+      --bg-card: #FFFFFF;
+      --border-color: #E5E7EB;
+    }
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      line-height: 1.6;
+      color: var(--text-main);
+      background-color: var(--bg-page);
+      padding: 32px 16px;
+    }
+    .container {
+      max-width: 720px;
+      margin: 0 auto;
+      background: var(--bg-card);
+      border-radius: 12px;
+      padding: 36px 32px;
+      border: 1px solid var(--border-color);
+      box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
+    }
+    .badge {
+      display: inline-block;
+      background-color: #FEE2E2;
+      color: var(--primary);
+      font-weight: 600;
+      font-size: 13px;
+      padding: 4px 12px;
+      border-radius: 9999px;
+      margin-bottom: 14px;
+    }
+    h1 {
+      font-size: 26px;
+      font-weight: 700;
+      color: #111827;
+      margin-bottom: 12px;
+    }
+    p {
+      color: var(--text-muted);
+      font-size: 15px;
+      margin-bottom: 16px;
+    }
+    .step-card {
+      background: #F3F4F6;
+      border-radius: 8px;
+      padding: 18px 20px;
+      margin-bottom: 20px;
+      border-left: 4px solid #2563EB;
+    }
+    .step-card.urgent {
+      border-left-color: var(--primary);
+      background: #FFF5F5;
+    }
+    .step-title {
+      font-weight: 600;
+      font-size: 16px;
+      color: #111827;
+      margin-bottom: 6px;
+    }
+    ul {
+      margin-left: 20px;
+      margin-bottom: 16px;
+      color: var(--text-muted);
+      font-size: 14.5px;
+    }
+    li {
+      margin-bottom: 6px;
+    }
+    .button {
+      display: inline-block;
+      background-color: var(--primary);
+      color: #FFFFFF;
+      font-weight: 600;
+      font-size: 15px;
+      padding: 12px 24px;
+      border-radius: 8px;
+      text-decoration: none;
+      margin-top: 10px;
+      transition: background-color 0.2s ease;
+    }
+    .button:hover {
+      background-color: var(--primary-hover);
+    }
+    .footer-note {
+      margin-top: 28px;
+      padding-top: 18px;
+      border-top: 1px solid var(--border-color);
+      font-size: 13px;
+      color: #6B7280;
+    }
+    a.link {
+      color: #2563EB;
+      text-decoration: none;
+    }
+    a.link:hover {
+      text-decoration: underline;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <span class="badge">Invoicify User Data Control</span>
+    <h1>Request Account &amp; Data Deletion</h1>
+    <p>
+      At <strong>Invoicify</strong> (developed by <strong>Herambh Software Technologies and Solutions</strong>), we respect your privacy and provide complete control over your personal, business, and client records.
+    </p>
+
+    <div class="step-card">
+      <div class="step-title">Option 1: Instant In-App Deletion (Recommended)</div>
+      <p style="margin-bottom: 8px;">If you have the app installed, you can delete your data immediately without waiting for administrative review:</p>
+      <ol style="margin-left: 22px; color: var(--text-muted); font-size: 14.5px;">
+        <li>Open the <strong>Invoicify</strong> app on your device.</li>
+        <li>Go to <strong>Settings</strong> from the bottom navigation or menu.</li>
+        <li>Scroll down to the bottom and tap <strong>Delete Account</strong> (below Logout).</li>
+        <li>Confirm by tapping <strong>Delete Permanently</strong>.</li>
+      </ol>
+      <p style="margin-top: 8px; font-size: 13.5px; color: #4B5563;">
+        <em>All your records in Google Cloud Firestore (business profile, customers, inventory, invoices) and local session tokens will be permanently purged immediately.</em>
+      </p>
+    </div>
+
+    <div class="step-card urgent">
+      <div class="step-title">Option 2: Submit a Web Deletion Request</div>
+      <p>If you uninstalled the app or cannot access your account, you can submit a deletion request directly by email:</p>
+      <ul>
+        <li>Send an email to: <a href="mailto:herambh.info@gmail.com" class="link"><strong>herambh.info@gmail.com</strong></a></li>
+        <li>Subject: <code>Request Account and Data Deletion - Invoicify</code></li>
+        <li>Include: Your <strong>registered mobile number</strong> used in the app.</li>
+      </ul>
+      <a class="button" href="mailto:herambh.info@gmail.com?subject=Request%20Account%20and%20Data%20Deletion%20-%20Invoicify&body=Hello%20Support%20Team,%0A%0APlease%20permanently%20delete%20my%20Invoicify%20account%20and%20all%20associated%20data.%0A%0ARegistered%20Mobile%20Number:%20%0ABusiness%20Name%20(if%20applicable):%20%0A%0AThank%20you.">Click Here to Send Deletion Request Email</a>
+    </div>
+
+    <h2 style="font-size: 18px; margin-top: 24px; margin-bottom: 8px;">What Happens When Data is Deleted?</h2>
+    <ul>
+      <li><strong>Account Details:</strong> Your user profile and authentication credentials are permanently deleted.</li>
+      <li><strong>Business Records:</strong> Business name, address, GSTIN, bank details, logo, and Payment QR images are erased.</li>
+      <li><strong>Customer &amp; Invoices:</strong> All customer directory entries, ledger transactions, and saved invoice documents are permanently removed.</li>
+      <li><strong>Timeline:</strong> In-app deletions take effect instantly. Email requests are verified and processed within <strong>30 days</strong>.</li>
+    </ul>
+
+    <div class="footer-note">
+      <p>
+        Developer: <strong>Herambh Software Technologies and Solutions</strong><br>
+        Address: Chhatrapati Sambhaji Nagar, Maharashtra, India<br>
+        View our full <a href="index.html" class="link">Privacy Policy</a>.
+      </p>
+    </div>
+  </div>
+</body>
+</html>
