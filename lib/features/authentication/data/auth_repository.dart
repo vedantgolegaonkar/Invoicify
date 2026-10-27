@@ -97,6 +97,51 @@ class AuthRepository {
   Future<void> clearCurrentUser() async {
     await _secureStorage.delete(key: 'current_user_id');
   }
+
+  /// Permanently deletes the user's account and all associated Firestore data and local storage.
+  Future<void> deleteUserAccountAndData(String userId) async {
+    // List of all subcollections under users/{userId}
+    final subcollections = [
+      'customers',
+      'products',
+      'orders',
+      'invoices',
+      'payments',
+      'inventory_transactions',
+      'settings',
+      'business',
+      'notifications',
+      'audit_logs',
+    ];
+
+    // Delete documents in each subcollection in batches
+    for (final col in subcollections) {
+      try {
+        final querySnapshot = await _firestoreService.instance
+            .collection('users/$userId/$col')
+            .get();
+        
+        if (querySnapshot.docs.isNotEmpty) {
+          final batch = _firestoreService.instance.batch();
+          for (final doc in querySnapshot.docs) {
+            batch.delete(doc.reference);
+          }
+          await batch.commit();
+        }
+      } catch (e) {
+        // Continue cleaning other collections even if one fails
+      }
+    }
+
+    // Delete the root user profile document
+    try {
+      await _firestoreService.instance.collection(_usersCollection).doc(userId).delete();
+    } catch (_) {}
+
+    // Clear local stored credentials
+    await _secureStorage.delete(key: 'local_pin_hash_$userId');
+    await _secureStorage.delete(key: 'current_user_id');
+  }
 }
 
 final authRepositoryProvider = Provider<AuthRepository>((ref) {

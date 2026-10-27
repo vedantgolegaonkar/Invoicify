@@ -79,6 +79,15 @@ class AuthNotifier extends AsyncNotifier<UserModel?> {
     await _authRepository.clearCurrentUser();
     state = const AsyncValue.data(null);
   }
+
+  Future<void> deleteAccount() async {
+    final user = state.value;
+    final userId = user?.id ?? await _authRepository.getCurrentUserId();
+    if (userId != null) {
+      await _authRepository.deleteUserAccountAndData(userId);
+    }
+    state = const AsyncValue.data(null);
+  }
 }
 
 final authNotifierProvider = AsyncNotifierProvider<AuthNotifier, UserModel?>(AuthNotifier.new);

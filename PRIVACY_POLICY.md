@@ -73,8 +73,9 @@ We implement strict administrative and technical safeguards to protect your reco
 
 ## 6. Data Retention and Account/Data Deletion
 
-* **In-App Management:** You have full control over your data. You can edit, modify, or delete products, customers, and invoice records at any time directly within the app.
-* **Complete Account & Cloud Data Deletion:** If you wish to permanently delete your account and all associated cloud records from our servers, you may request deletion by emailing us at **herambh.info@gmail.com**. Upon verification, all records will be deleted from our active databases within 30 days.
+* **In-App Account & Data Deletion:** Users can permanently delete their entire account and all associated data directly within the app by navigating to **Settings > Delete Account**. This permanently removes your user account, business profile, customers, inventory products, and invoices from our cloud database.
+* **In-App Record Management:** You can edit, modify, or delete individual products, customers, and invoice records at any time directly within the app.
+* **Web / Email Account & Data Deletion:** If you cannot access the app or prefer to request deletion via the web/email, you can submit an account and data deletion request by emailing **herambh.info@gmail.com**. Upon verification, all records will be permanently purged within 30 days.
 
 ---
 

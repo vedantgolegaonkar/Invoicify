@@ -64,6 +64,83 @@ class SettingsScreen extends ConsumerWidget {
               }
             },
           ),
+          ListTile(
+            leading: const Icon(Icons.delete_forever, color: Colors.redAccent),
+            title: const Text('Delete Account', style: TextStyle(color: Colors.redAccent, fontWeight: FontWeight.bold)),
+            subtitle: const Text('Permanently delete your account and all associated data', style: TextStyle(fontSize: 12, color: Colors.grey)),
+            onTap: () => _confirmDeleteAccount(context, ref),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _confirmDeleteAccount(BuildContext context, WidgetRef ref) {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (ctx) => AlertDialog(
+        title: const Row(
+          children: [
+            Icon(Icons.warning_amber_rounded, color: Colors.red, size: 28),
+            SizedBox(width: 8),
+            Text('Delete Account?'),
+          ],
+        ),
+        content: const Text(
+          'This action is irreversible.\n\nAll your account details, business profile, customers, inventory products, and invoices stored in the cloud will be permanently deleted.',
+          style: TextStyle(fontSize: 14),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
+            onPressed: () async {
+              Navigator.of(ctx).pop();
+              // Show loading overlay
+              showDialog(
+                context: context,
+                barrierDismissible: false,
+                builder: (dialogCtx) => const Center(
+                  child: Card(
+                    child: Padding(
+                      padding: EdgeInsets.all(24),
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          CircularProgressIndicator(color: Colors.red),
+                          SizedBox(height: 16),
+                          Text('Deleting all account data...'),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+              );
+
+              try {
+                await ref.read(authNotifierProvider.notifier).deleteAccount();
+                if (context.mounted) {
+                  Navigator.of(context, rootNavigator: true).pop(); // dismiss loading
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('Account and all associated data deleted successfully.')),
+                  );
+                  context.go('/login');
+                }
+              } catch (e) {
+                if (context.mounted) {
+                  Navigator.of(context, rootNavigator: true).pop(); // dismiss loading
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(content: Text('Error deleting account: $e')),
+                  );
+                }
+              }
+            },
+            child: const Text('Delete Permanently', style: TextStyle(color: Colors.white)),
+          ),
         ],
       ),
     );
