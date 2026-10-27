@@ -1,0 +1,197 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Privacy Policy - Invoicify</title>
+  <style>
+    :root {
+      --primary-color: #2563EB;
+      --text-main: #1F2937;
+      --text-muted: #4B5563;
+      --bg-page: #F9FAFB;
+      --bg-card: #FFFFFF;
+      --border-color: #E5E7EB;
+    }
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      line-height: 1.65;
+      color: var(--text-main);
+      background-color: var(--bg-page);
+      padding: 24px 16px;
+    }
+    .container {
+      max-width: 820px;
+      margin: 0 auto;
+      background: var(--bg-card);
+      border-radius: 12px;
+      padding: 36px 32px;
+      border: 1px solid var(--border-color);
+      box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
+    }
+    h1 {
+      font-size: 28px;
+      font-weight: 700;
+      color: #111827;
+      margin-bottom: 8px;
+    }
+    .badge {
+      display: inline-block;
+      background-color: #EFF6FF;
+      color: var(--primary-color);
+      font-weight: 600;
+      font-size: 13px;
+      padding: 4px 10px;
+      border-radius: 9999px;
+      margin-bottom: 12px;
+    }
+    .meta-date {
+      color: var(--text-muted);
+      font-size: 14px;
+      margin-bottom: 24px;
+      padding-bottom: 16px;
+      border-bottom: 1px solid var(--border-color);
+    }
+    h2 {
+      font-size: 19px;
+      font-weight: 600;
+      color: #1F2937;
+      margin-top: 28px;
+      margin-bottom: 12px;
+    }
+    h3 {
+      font-size: 15px;
+      font-weight: 600;
+      color: #374151;
+      margin-top: 14px;
+      margin-bottom: 6px;
+    }
+    p {
+      margin-bottom: 14px;
+      color: var(--text-muted);
+      font-size: 15px;
+    }
+    ul {
+      margin-left: 20px;
+      margin-bottom: 16px;
+      color: var(--text-muted);
+      font-size: 15px;
+    }
+    li {
+      margin-bottom: 6px;
+    }
+    .contact-box {
+      margin-top: 32px;
+      background: #F3F4F6;
+      border-radius: 8px;
+      padding: 20px;
+      border-left: 4px solid var(--primary-color);
+    }
+    .contact-box p {
+      margin-bottom: 6px;
+      color: #1F2937;
+      font-size: 14.5px;
+    }
+    a {
+      color: var(--primary-color);
+      text-decoration: none;
+    }
+    a:hover {
+      text-decoration: underline;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <span class="badge">Invoicify Mobile App</span>
+    <h1>Privacy Policy</h1>
+    <div class="meta-date">Last Updated: October 27, 2026</div>
+
+    <p>
+      <strong>Invoicify</strong> (&ldquo;we&rdquo;, &ldquo;our&rdquo;, or &ldquo;us&rdquo;), developed by <strong>Herambh Software Technologies and Solutions</strong>, is committed to safeguarding the privacy of business owners and their clients. This Privacy Policy details how our mobile application collects, uses, stores, and protects personal and commercial data in full compliance with the Google Play Developer Distribution Agreement and User Data policies.
+    </p>
+
+    <h2>1. Information We Collect</h2>
+    <p>Invoicify collects and processes information solely to provide billing, ledger tracking, and invoice management functionality:</p>
+
+    <h3>A. Business Profile Information</h3>
+    <ul>
+      <li>Business name, address, contact telephone number, and email address.</li>
+      <li>Statutory identification details such as GSTIN, FSSAI numbers, ARN number, and MSME numbers.</li>
+      <li>Bank account information (Account holder name, bank name, account number, IFSC code, UPI ID) and Payment QR code image for customer payments.</li>
+      <li>Business logo and authorized signature.</li>
+    </ul>
+
+    <h3>B. Customer &amp; Transaction Records</h3>
+    <ul>
+      <li>Customer details entered by you: Name, contact number, WhatsApp number, billing/shipping address, and GSTIN.</li>
+      <li>Invoice details: Item names, rates, HSN/SAC codes, quantities, CGST/SGST/IGST breakdown, payment status, discounts, and payment history.</li>
+    </ul>
+
+    <h3>C. Diagnostic &amp; Device Information</h3>
+    <ul>
+      <li>Crash logs, device OS version, device manufacturer, and diagnostic performance metrics via Google Firebase Crashlytics to detect and fix bugs.</li>
+    </ul>
+
+    <h2>2. How We Use Collected Data</h2>
+    <p>We use your data strictly to deliver core invoicing features:</p>
+    <ul>
+      <li>Generating, formatting, rendering, and sharing GST/e-Invoice compliant PDF invoices and receipts.</li>
+      <li>Maintaining customer balances, payment ledgers, and transaction history.</li>
+      <li>Tracking inventory stock and providing low-stock alerts.</li>
+      <li>Diagnosing crashes and optimizing stability via Firebase Crashlytics.</li>
+    </ul>
+    <p><strong>We do not sell, rent, lease, or monetize your or your customers' data to third parties, advertisers, or data brokers.</strong></p>
+
+    <h2>3. Cloud Synchronization &amp; Storage</h2>
+    <p>
+      Data is stored locally on your device and synchronized with <strong>Google Cloud Firestore</strong> and <strong>Google Firebase Storage</strong> (infrastructure by Google LLC). All data transmitted between your device and Google cloud servers is encrypted using industry-standard TLS/HTTPS protocols. Data stored at rest is protected with AES-256 encryption.
+    </p>
+
+    <h2>4. Device Permissions Requested</h2>
+    <p>Invoicify requests only necessary device permissions:</p>
+    <ul>
+      <li><strong>Internet (<code>android.permission.INTERNET</code>):</strong> Enables secure synchronization of business records, invoices, and cloud backups with Google Firebase.</li>
+      <li><strong>Network State (<code>android.permission.ACCESS_NETWORK_STATE</code>):</strong> Detects connectivity to ensure smooth offline data capture and automated sync once connected.</li>
+      <li><strong>Photo Library / Gallery:</strong> Used exclusively when you choose to upload a Business Logo or Payment QR code from your gallery, with an optional cropping tool to frame the QR code.</li>
+      <li><strong>Notifications (<code>android.permission.POST_NOTIFICATIONS</code>):</strong> Allows the app to notify you of low inventory levels or payment due reminders.</li>
+    </ul>
+
+    <h2>5. Data Sharing and Third Parties</h2>
+    <p>We share minimal necessary diagnostic and storage data strictly with verified service providers to operate the app:</p>
+    <ul>
+      <li><strong>Google Firebase (Google LLC):</strong> Cloud database (Firestore), image storage, and crash reporting (Crashlytics). Subject to <a href="https://policies.google.com/privacy" target="_blank" rel="noopener">Google's Privacy Policy</a>.</li>
+      <li><strong>Device Native Sharing:</strong> When you share an invoice via WhatsApp, Email, or other apps, the generated PDF file is passed to your device's native share menu based entirely on your explicit action.</li>
+    </ul>
+
+    <h2>6. User Data Control and Deletion Policy</h2>
+    <p>
+      You maintain complete ownership of your data. You can edit, modify, or delete any customer, product, or invoice record directly within the app at any time.
+    </p>
+    <p>
+      <strong>Account &amp; Permanent Cloud Data Deletion:</strong> If you wish to permanently delete your account and all associated cloud data from Google Firebase servers, you may send a deletion request to <strong>herambh.info@gmail.com</strong>. Upon receiving your request, all your stored business, customer, and invoice records will be permanently purged within 30 days.
+    </p>
+
+    <h2>7. Children's Privacy</h2>
+    <p>
+      Invoicify is an enterprise billing and invoicing tool intended solely for business management by individuals aged 18 and older. We do not knowingly collect personal information from children under the age of 13.
+    </p>
+
+    <h2>8. Updates to This Privacy Policy</h2>
+    <p>
+      We may periodically update this policy to reflect application enhancements or regulatory changes. The latest version will always be accessible at this URL and within the app's Settings &gt; Legal &amp; Compliance section.
+    </p>
+
+    <div class="contact-box">
+      <p><strong>Herambh Software Technologies and Solutions</strong></p>
+      <p>Chhatrapati Sambhaji Nagar, Maharashtra, India</p>
+      <p>Developer &amp; Support Contact: <a href="mailto:herambh.info@gmail.com">herambh.info@gmail.com</a></p>
+    </div>
+  </div>
+</body>
+</html>

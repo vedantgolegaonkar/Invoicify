@@ -104,7 +104,7 @@ class _PrivacyContent extends StatelessWidget {
           const SizedBox(height: 16),
           _buildSection(
             '1. Information We Collect',
-            '• Business Details: Business name, address, phone number, GSTIN, FSSAI number, bank account / UPI ID, and business logo.\n• Customer Data: Customer names, mobile numbers, WhatsApp numbers, addresses, and purchase history.\n• Invoicing Records: Itemized transaction details, payment history, and outstanding balances.\n• Technical Diagnostics: Crash reports via Firebase Crashlytics to maintain application stability.',
+            '• Business Details: Business name, address, phone number, GSTIN, FSSAI, ARN, MSME, bank account / UPI ID, business logo, and Payment QR.\n• Customer Data: Customer names, phone numbers, WhatsApp numbers, addresses, and purchase history.\n• Invoicing Records: Itemized transaction details, payment history, and outstanding balances.\n• Technical Diagnostics: Anonymous crash reports via Firebase Crashlytics to maintain application stability.',
           ),
           _buildSection(
             '2. How We Use Data',
@@ -112,15 +112,15 @@ class _PrivacyContent extends StatelessWidget {
           ),
           _buildSection(
             '3. Data Storage & Cloud Sync',
-            'Data is securely synced with Google Firebase Cloud Firestore using industry-standard HTTPS/TLS encryption in transit and AES encryption at rest.',
+            'Data is securely synced with Google Firebase Cloud Firestore using industry-standard HTTPS/TLS encryption in transit and AES-256 encryption at rest.',
           ),
           _buildSection(
             '4. App Permissions',
-            '• Internet: To sync data securely with Firebase cloud storage.\n• Notifications: To provide low stock and payment alerts.\n• Photo Library: To select a business logo or signature image when configured.',
+            '• Internet: To sync data securely with Firebase cloud storage.\n• Notifications: To provide low stock and payment alerts.\n• Photo Library: To select a business logo or Payment QR code image when configured.',
           ),
           _buildSection(
             '5. Data Control & Deletion',
-            'You have full control to add, edit, or delete customer and invoice records directly within the app. To request permanent account and cloud data deletion, please contact support@herambh.com.',
+            'You have full control to add, edit, or delete customer and invoice records directly within the app. To request permanent account and cloud data deletion, please contact herambh.info@gmail.com.',
           ),
           const SizedBox(height: 20),
           _buildContactBox(),
