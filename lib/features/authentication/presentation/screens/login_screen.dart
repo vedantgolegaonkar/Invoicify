@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../providers/auth_provider.dart';
@@ -146,8 +147,16 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
           TextField(
             controller: _mobileController,
             keyboardType: TextInputType.phone,
+            maxLength: 10,
+            inputFormatters: [
+              FilteringTextInputFormatter.digitsOnly,
+              LengthLimitingTextInputFormatter(10),
+            ],
             decoration: const InputDecoration(
               labelText: 'Mobile Number',
+              hintText: '9876543210',
+              prefixText: '+91 ',
+              counterText: '',
               prefixIcon: Icon(Icons.phone),
               border: OutlineInputBorder(),
             ),
@@ -155,10 +164,11 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
           const SizedBox(height: 24),
           ElevatedButton(
             onPressed: _isLoading ? null : () async {
-              if (_mobileController.text.trim().length >= 10) {
+              final mobile = _mobileController.text.trim();
+              if (RegExp(r'^[6-9]\d{9}$').hasMatch(mobile)) {
                 setState(() => _isLoading = true);
                 try {
-                  final exists = await ref.read(authNotifierProvider.notifier).checkMobileExists(_mobileController.text.trim());
+                  final exists = await ref.read(authNotifierProvider.notifier).checkMobileExists(mobile);
                   if (mounted) {
                     setState(() {
                       _isNewUser = !exists;
@@ -174,7 +184,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                 }
               } else {
                 ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('Please enter a valid mobile number')),
+                  const SnackBar(content: Text('Please enter a valid 10-digit mobile number starting with 6-9')),
                 );
               }
             },

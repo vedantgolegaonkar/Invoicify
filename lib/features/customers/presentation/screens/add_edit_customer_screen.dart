@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:uuid/uuid.dart';
 import '../../../../shared/widgets/custom_text_field.dart';
@@ -127,6 +128,31 @@ class _AddEditCustomerScreenState extends ConsumerState<AddEditCustomerScreen> {
   Future<void> _saveCustomer() async {
     if (!_formKey.currentState!.validate()) return;
 
+    final mobile = _mobileController.text.trim();
+    if (!RegExp(r'^[6-9]\d{9}$').hasMatch(mobile)) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Please enter a valid 10-digit mobile number starting with 6-9')),
+      );
+      return;
+    }
+
+    // Check for duplicate mobile number among existing customers
+    final customers = ref.read(customersStreamProvider).value;
+    if (customers != null) {
+      final duplicate = customers
+          .where((c) => c.mobile == mobile && c.id != (widget.customerId ?? ''))
+          .firstOrNull;
+      if (duplicate != null) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('A customer with mobile $mobile already exists (${duplicate.name})'),
+            backgroundColor: Colors.red.shade700,
+          ),
+        );
+        return;
+      }
+    }
+
     setState(() => _isLoading = true);
 
     try {
@@ -229,11 +255,25 @@ class _AddEditCustomerScreenState extends ConsumerState<AddEditCustomerScreen> {
               _sectionHeader('Contact Details'),
               CustomTextField(
                 label: 'Mobile Number',
-                hint: '10 digit mobile number',
+                hint: '9876543210',
+                prefixText: '+91 ',
+                maxLength: 10,
+                inputFormatters: [
+                  FilteringTextInputFormatter.digitsOnly,
+                  LengthLimitingTextInputFormatter(10),
+                ],
                 keyboardType: TextInputType.phone,
                 prefixIcon: const Icon(Icons.phone_outlined),
                 controller: _mobileController,
-                validator: (val) => val == null || val.isEmpty ? 'Required' : null,
+                validator: (val) {
+                  final clean = val?.trim() ?? '';
+                  if (clean.isEmpty) return 'Mobile number is required';
+                  if (clean.length != 10) return 'Must be exactly 10 digits';
+                  if (!RegExp(r'^[6-9]\d{9}$').hasMatch(clean)) {
+                    return 'Must start with 6, 7, 8, or 9';
+                  }
+                  return null;
+                },
               ),
 
               // WhatsApp toggle styled as a card
@@ -281,11 +321,25 @@ class _AddEditCustomerScreenState extends ConsumerState<AddEditCustomerScreen> {
               if (!_whatsappSameAsMobile)
                 CustomTextField(
                   label: 'WhatsApp Number',
-                  hint: 'Enter WhatsApp number',
+                  hint: '9876543210',
+                  prefixText: '+91 ',
+                  maxLength: 10,
+                  inputFormatters: [
+                    FilteringTextInputFormatter.digitsOnly,
+                    LengthLimitingTextInputFormatter(10),
+                  ],
                   keyboardType: TextInputType.phone,
                   prefixIcon: const Icon(Icons.chat_outlined),
                   controller: _whatsappController,
-                  validator: (val) => val == null || val.isEmpty ? 'Required' : null,
+                  validator: (val) {
+                    final clean = val?.trim() ?? '';
+                    if (clean.isEmpty) return 'WhatsApp number is required';
+                    if (clean.length != 10) return 'Must be exactly 10 digits';
+                    if (!RegExp(r'^[6-9]\d{9}$').hasMatch(clean)) {
+                      return 'Must start with 6, 7, 8, or 9';
+                    }
+                    return null;
+                  },
                 ),
 
               CustomTextField(

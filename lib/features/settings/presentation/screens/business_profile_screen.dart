@@ -1,6 +1,7 @@
 import 'dart:io';
 import 'dart:convert';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:image_cropper/image_cropper.dart';
@@ -421,10 +422,24 @@ class _BusinessProfileScreenState extends ConsumerState<BusinessProfileScreen> {
                 ),
                 CustomTextField(
                   label: 'Phone Number *',
-                  hint: '10 digit mobile number',
+                  hint: '9876543210',
+                  prefixText: '+91 ',
+                  maxLength: 10,
+                  inputFormatters: [
+                    FilteringTextInputFormatter.digitsOnly,
+                    LengthLimitingTextInputFormatter(10),
+                  ],
                   keyboardType: TextInputType.phone,
                   controller: _phoneCtrl,
-                  validator: (v) => v == null || v.trim().isEmpty ? 'Required' : null,
+                  validator: (v) {
+                    final clean = v?.trim() ?? '';
+                    if (clean.isEmpty) return 'Phone number is required';
+                    if (clean.length != 10) return 'Must be exactly 10 digits';
+                    if (!RegExp(r'^[6-9]\d{9}$').hasMatch(clean)) {
+                      return 'Must start with 6, 7, 8, or 9';
+                    }
+                    return null;
+                  },
                 ),
                 CustomTextField(
                   label: 'Email Address',
