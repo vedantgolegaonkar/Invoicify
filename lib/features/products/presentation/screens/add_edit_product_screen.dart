@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:uuid/uuid.dart';
 import '../../../../shared/widgets/custom_text_field.dart';
@@ -75,6 +76,23 @@ class _AddEditProductScreenState extends ConsumerState<AddEditProductScreen> {
   Future<void> _saveProduct() async {
     if (!_formKey.currentState!.validate()) return;
     
+    final name = _nameController.text.trim();
+    final products = ref.read(productsStreamProvider).value;
+    if (products != null) {
+      final duplicate = products
+          .where((p) => p.name.trim().toLowerCase() == name.toLowerCase() && p.id != (widget.productId ?? ''))
+          .firstOrNull;
+      if (duplicate != null) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('A product named "$name" already exists'),
+            backgroundColor: Colors.red.shade700,
+          ),
+        );
+        return;
+      }
+    }
+
     setState(() => _isLoading = true);
 
     try {
@@ -181,8 +199,22 @@ class _AddEditProductScreenState extends ConsumerState<AddEditProductScreen> {
                   ),
                   CustomTextField(
                     label: 'HSN Code',
-                    hint: 'Enter HSN Code',
+                    hint: 'e.g. 2106 (optional)',
+                    maxLength: 8,
+                    keyboardType: TextInputType.number,
+                    inputFormatters: [
+                      FilteringTextInputFormatter.digitsOnly,
+                      LengthLimitingTextInputFormatter(8),
+                    ],
                     controller: _hsnCodeController,
+                    validator: (val) {
+                      final clean = val?.trim() ?? '';
+                      if (clean.isEmpty) return null;
+                      if (clean.length < 2 || clean.length > 8) {
+                        return 'HSN must be 2 to 8 digits';
+                      }
+                      return null;
+                    },
                   ),
                   const SizedBox(height: 8),
                   SwitchListTile(
@@ -205,8 +237,18 @@ class _AddEditProductScreenState extends ConsumerState<AddEditProductScreen> {
                         child: CustomTextField(
                           label: 'Current Stock',
                           hint: '0',
-                          keyboardType: TextInputType.number,
+                          keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                          inputFormatters: [
+                            FilteringTextInputFormatter.allow(RegExp(r'^\d*\.?\d*')),
+                          ],
                           controller: _currentStockController,
+                          validator: (val) {
+                            if (val != null && val.trim().isNotEmpty) {
+                              final n = double.tryParse(val.trim());
+                              if (n == null || n < 0) return 'Must be ≥ 0';
+                            }
+                            return null;
+                          },
                         ),
                       ),
                       const SizedBox(width: 16),
@@ -214,8 +256,18 @@ class _AddEditProductScreenState extends ConsumerState<AddEditProductScreen> {
                         child: CustomTextField(
                           label: 'Minimum Stock',
                           hint: '0',
-                          keyboardType: TextInputType.number,
+                          keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                          inputFormatters: [
+                            FilteringTextInputFormatter.allow(RegExp(r'^\d*\.?\d*')),
+                          ],
                           controller: _minimumStockController,
+                          validator: (val) {
+                            if (val != null && val.trim().isNotEmpty) {
+                              final n = double.tryParse(val.trim());
+                              if (n == null || n < 0) return 'Must be ≥ 0';
+                            }
+                            return null;
+                          },
                         ),
                       ),
                     ],
@@ -231,9 +283,17 @@ class _AddEditProductScreenState extends ConsumerState<AddEditProductScreen> {
                         child: CustomTextField(
                           label: 'CGST (%)',
                           hint: '2.5',
-                          keyboardType: TextInputType.number,
+                          keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                          inputFormatters: [
+                            FilteringTextInputFormatter.allow(RegExp(r'^\d*\.?\d*')),
+                          ],
                           controller: _cgstController,
-                          validator: (val) => val == null || val.isEmpty ? 'Required' : null,
+                          validator: (val) {
+                            if (val == null || val.trim().isEmpty) return 'Required';
+                            final n = double.tryParse(val.trim());
+                            if (n == null || n < 0 || n > 50) return 'Enter 0 to 50%';
+                            return null;
+                          },
                         ),
                       ),
                       const SizedBox(width: 16),
@@ -241,9 +301,17 @@ class _AddEditProductScreenState extends ConsumerState<AddEditProductScreen> {
                         child: CustomTextField(
                           label: 'SGST (%)',
                           hint: '2.5',
-                          keyboardType: TextInputType.number,
+                          keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                          inputFormatters: [
+                            FilteringTextInputFormatter.allow(RegExp(r'^\d*\.?\d*')),
+                          ],
                           controller: _sgstController,
-                          validator: (val) => val == null || val.isEmpty ? 'Required' : null,
+                          validator: (val) {
+                            if (val == null || val.trim().isEmpty) return 'Required';
+                            final n = double.tryParse(val.trim());
+                            if (n == null || n < 0 || n > 50) return 'Enter 0 to 50%';
+                            return null;
+                          },
                         ),
                       ),
                     ],
@@ -251,9 +319,18 @@ class _AddEditProductScreenState extends ConsumerState<AddEditProductScreen> {
                   CustomTextField(
                     label: 'IGST (INR)',
                     hint: '1.46',
-                    keyboardType: TextInputType.number,
+                    keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                    inputFormatters: [
+                      FilteringTextInputFormatter.allow(RegExp(r'^\d*\.?\d*')),
+                    ],
                     controller: _igstController,
-                    validator: (val) => val == null || val.isEmpty ? 'Required' : null,
+                    validator: (val) {
+                      if (val != null && val.trim().isNotEmpty) {
+                        final n = double.tryParse(val.trim());
+                        if (n == null || n < 0) return 'Must be ≥ 0';
+                      }
+                      return null;
+                    },
                   ),
                 ],
               ),

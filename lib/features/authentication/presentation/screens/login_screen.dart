@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -20,8 +21,44 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   bool _isConfirmingPin = false;
   bool _isLoading = false;
   String? _errorMessage;
+  int _failedAttempts = 0;
+  int _lockoutSeconds = 0;
+  Timer? _lockoutTimer;
+
+  @override
+  void dispose() {
+    _lockoutTimer?.cancel();
+    _mobileController.dispose();
+    super.dispose();
+  }
+
+  void _startLockout(int seconds) {
+    setState(() {
+      _lockoutSeconds = seconds;
+      _errorMessage = 'Too many failed attempts. Try again in $_lockoutSeconds seconds.';
+      _pin = '';
+    });
+    _lockoutTimer?.cancel();
+    _lockoutTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
+      if (!mounted) {
+        timer.cancel();
+        return;
+      }
+      setState(() {
+        if (_lockoutSeconds > 1) {
+          _lockoutSeconds--;
+          _errorMessage = 'Too many failed attempts. Try again in $_lockoutSeconds seconds.';
+        } else {
+          _lockoutSeconds = 0;
+          _errorMessage = null;
+          timer.cancel();
+        }
+      });
+    });
+  }
 
   void _onKeyPress(String key) {
+    if (_lockoutSeconds > 0) return;
     if (_pin.length < 4) {
       setState(() {
         _pin += key;
@@ -56,6 +93,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   }
 
   void _onDelete() {
+    if (_lockoutSeconds > 0) return;
     if (_pin.isNotEmpty) {
       setState(() {
         _pin = _pin.substring(0, _pin.length - 1);
@@ -65,6 +103,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   }
 
   Future<void> _submit() async {
+    if (_lockoutSeconds > 0) return;
     setState(() {
       _isLoading = true;
       _errorMessage = null;
@@ -77,11 +116,23 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
       );
       
       if (success && mounted) {
+        _failedAttempts = 0;
         context.go('/dashboard');
       }
     } catch (e) {
+      if (!_isNewUser) {
+        _failedAttempts++;
+        if (_failedAttempts >= 5) {
+          _startLockout(30);
+          return;
+        }
+      }
+      final remaining = 5 - _failedAttempts;
+      final extraWarning = (!_isNewUser && remaining > 0 && remaining < 5)
+          ? ' ($remaining attempt${remaining == 1 ? '' : 's'} remaining)'
+          : '';
       setState(() {
-        _errorMessage = e.toString().replaceAll('Exception: ', '');
+        _errorMessage = '${e.toString().replaceAll('Exception: ', '')}$extraWarning';
         _pin = '';
       });
     } finally {
@@ -91,12 +142,6 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
         });
       }
     }
-  }
-
-  @override
-  void dispose() {
-    _mobileController.dispose();
-    super.dispose();
   }
 
   @override

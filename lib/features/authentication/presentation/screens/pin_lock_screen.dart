@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -14,8 +15,43 @@ class _PinLockScreenState extends ConsumerState<PinLockScreen> {
   String _pin = '';
   bool _isLoading = false;
   String? _errorMessage;
+  int _failedAttempts = 0;
+  int _lockoutSeconds = 0;
+  Timer? _lockoutTimer;
+
+  @override
+  void dispose() {
+    _lockoutTimer?.cancel();
+    super.dispose();
+  }
+
+  void _startLockout(int seconds) {
+    setState(() {
+      _lockoutSeconds = seconds;
+      _errorMessage = 'Too many failed attempts. Try again in $_lockoutSeconds seconds.';
+      _pin = '';
+    });
+    _lockoutTimer?.cancel();
+    _lockoutTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
+      if (!mounted) {
+        timer.cancel();
+        return;
+      }
+      setState(() {
+        if (_lockoutSeconds > 1) {
+          _lockoutSeconds--;
+          _errorMessage = 'Too many failed attempts. Try again in $_lockoutSeconds seconds.';
+        } else {
+          _lockoutSeconds = 0;
+          _errorMessage = null;
+          timer.cancel();
+        }
+      });
+    });
+  }
 
   void _onKeyPress(String key) {
+    if (_lockoutSeconds > 0) return;
     if (_pin.length < 4) {
       setState(() {
         _pin += key;
@@ -28,6 +64,7 @@ class _PinLockScreenState extends ConsumerState<PinLockScreen> {
   }
 
   Future<void> _verifyPin() async {
+    if (_lockoutSeconds > 0) return;
     setState(() {
       _isLoading = true;
     });
@@ -39,17 +76,25 @@ class _PinLockScreenState extends ConsumerState<PinLockScreen> {
         _isLoading = false;
       });
       if (isValid) {
+        _failedAttempts = 0;
         context.go('/dashboard');
       } else {
-        setState(() {
-          _errorMessage = 'Invalid PIN';
-          _pin = '';
-        });
+        _failedAttempts++;
+        if (_failedAttempts >= 5) {
+          _startLockout(30);
+        } else {
+          final remaining = 5 - _failedAttempts;
+          setState(() {
+            _errorMessage = 'Invalid PIN. $remaining attempt${remaining == 1 ? '' : 's'} remaining.';
+            _pin = '';
+          });
+        }
       }
     }
   }
 
   void _onDelete() {
+    if (_lockoutSeconds > 0) return;
     if (_pin.isNotEmpty) {
       setState(() {
         _pin = _pin.substring(0, _pin.length - 1);

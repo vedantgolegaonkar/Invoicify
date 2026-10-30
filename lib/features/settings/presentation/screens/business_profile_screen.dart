@@ -402,8 +402,37 @@ class _BusinessProfileScreenState extends ConsumerState<BusinessProfileScreen> {
                 ),
                 CustomTextField(
                   label: 'GST Number',
-                  hint: 'e.g. 27AABCU9603R1ZX (optional)',
+                  hint: 'e.g. 27AAAAA0000A1Z5 (optional)',
+                  maxLength: 15,
+                  inputFormatters: [
+                    LengthLimitingTextInputFormatter(15),
+                  ],
                   controller: _gstCtrl,
+                  validator: (v) {
+                    final clean = v?.trim().toUpperCase() ?? '';
+                    if (clean.isEmpty) return null;
+                    if (!RegExp(r'^[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z]{1}[1-9A-Z]{1}Z[0-9A-Z]{1}$').hasMatch(clean)) {
+                      return 'Enter a valid 15-digit GSTIN (e.g., 27ABCDE1234F1Z5)';
+                    }
+                    return null;
+                  },
+                ),
+                CustomTextField(
+                  label: 'PAN Number',
+                  hint: 'e.g. ABCDE1234F (optional)',
+                  maxLength: 10,
+                  inputFormatters: [
+                    LengthLimitingTextInputFormatter(10),
+                  ],
+                  controller: _panCtrl,
+                  validator: (v) {
+                    final clean = v?.trim().toUpperCase() ?? '';
+                    if (clean.isEmpty) return null;
+                    if (!RegExp(r'^[A-Z]{5}[0-9]{4}[A-Z]{1}$').hasMatch(clean)) {
+                      return 'Enter a valid 10-character PAN (e.g., ABCDE1234F)';
+                    }
+                    return null;
+                  },
                 ),
                 CustomTextField(
                   label: 'ARN Number',
@@ -443,9 +472,17 @@ class _BusinessProfileScreenState extends ConsumerState<BusinessProfileScreen> {
                 ),
                 CustomTextField(
                   label: 'Email Address',
-                  hint: 'e.g. contact@business.com',
+                  hint: 'e.g. contact@business.com (optional)',
                   keyboardType: TextInputType.emailAddress,
                   controller: _emailCtrl,
+                  validator: (v) {
+                    final clean = v?.trim() ?? '';
+                    if (clean.isEmpty) return null;
+                    if (!RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$').hasMatch(clean)) {
+                      return 'Please enter a valid email address';
+                    }
+                    return null;
+                  },
                 ),
                 CustomTextField(
                   label: 'Jurisdiction City',

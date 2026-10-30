@@ -344,19 +344,39 @@ class _AddEditCustomerScreenState extends ConsumerState<AddEditCustomerScreen> {
 
               CustomTextField(
                 label: 'Email',
-                hint: 'Optional',
+                hint: 'e.g. customer@example.com (Optional)',
                 keyboardType: TextInputType.emailAddress,
                 prefixIcon: const Icon(Icons.email_outlined),
                 controller: _emailController,
+                validator: (val) {
+                  final clean = val?.trim() ?? '';
+                  if (clean.isEmpty) return null;
+                  if (!RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$').hasMatch(clean)) {
+                    return 'Please enter a valid email address';
+                  }
+                  return null;
+                },
               ),
 
               // ─── Statutory & Tax Details (GST) ───────────────────
               _sectionHeader('Tax & GST Details (Optional)'),
               CustomTextField(
                 label: 'GSTIN / UIN',
-                hint: 'e.g. 27AABCU9603R1ZX',
+                hint: 'e.g. 27AAAAA0000A1Z5',
+                maxLength: 15,
+                inputFormatters: [
+                  LengthLimitingTextInputFormatter(15),
+                ],
                 prefixIcon: const Icon(Icons.receipt_outlined),
                 controller: _gstController,
+                validator: (val) {
+                  final clean = val?.trim().toUpperCase() ?? '';
+                  if (clean.isEmpty) return null;
+                  if (!RegExp(r'^[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z]{1}[1-9A-Z]{1}Z[0-9A-Z]{1}$').hasMatch(clean)) {
+                    return 'Enter a valid 15-digit GSTIN (e.g., 27ABCDE1234F1Z5)';
+                  }
+                  return null;
+                },
               ),
               Row(
                 children: [
@@ -373,8 +393,13 @@ class _AddEditCustomerScreenState extends ConsumerState<AddEditCustomerScreen> {
                     flex: 1,
                     child: CustomTextField(
                       label: 'State Code',
-                      hint: 'e.g. 27',
+                      hint: '27',
+                      maxLength: 2,
                       keyboardType: TextInputType.number,
+                      inputFormatters: [
+                        FilteringTextInputFormatter.digitsOnly,
+                        LengthLimitingTextInputFormatter(2),
+                      ],
                       controller: _stateCodeController,
                     ),
                   ),

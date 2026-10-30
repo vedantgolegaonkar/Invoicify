@@ -2,83 +2,386 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    // Since this is for a single owner and authentication is NOT implemented yet,
-    // we have to allow read/write access. However, to make it slightly safer for production
-    // until Auth is added, we enforce schema validation.
-    
-    // Function to check if the document is being soft deleted or restored
+    // =========================================================================
+    // HELPER FUNCTIONS & COMMON VALIDATORS
+    // =========================================================================
+
     function isSoftDeleteUpdate() {
       return request.resource.data.diff(resource.data).affectedKeys()
         .hasOnly(['isDeleted', 'deletedAt', 'updatedAt']);
     }
 
-    // Function to check if essential fields exist on create
-    function hasRequiredFields(requiredFields) {
-      return request.resource.data.keys().hasAll(requiredFields);
+    function isString(val, minLen, maxLen) {
+      return val is string && val.size() >= minLen && val.size() <= maxLen;
     }
 
-    match /customers/{customerId} {
+    function isOptionalString(data, field, minLen, maxLen) {
+      return !(field in data) || data[field] == null || (data[field] is string && data[field].size() >= minLen && data[field].size() <= maxLen);
+    }
+
+    function isNumber(val) {
+      return val is int || val is float;
+    }
+
+    function isPositiveOrZeroNumber(val) {
+      return isNumber(val) && val >= 0;
+    }
+
+    function isIndianMobileNumber(val) {
+      return val is string && val.matches('^[6-9][0-9]{9}$');
+    }
+
+    function isTimestampField(val) {
+      return val is timestamp;
+    }
+
+    function isOptionalTimestamp(data, field) {
+      return !(field in data) || data[field] == null || data[field] is timestamp;
+    }
+
+    // =========================================================================
+    // DOMAIN VALIDATORS
+    // =========================================================================
+
+    // 1. User Profile Document: users/{userId}
+    function isValidUser(data) {
+      return data.keys().hasAll(['id', 'mobileNumber', 'pinHash', 'createdAt'])
+        && data.id is string && data.id.size() > 0 && data.id.size() <= 100
+        && isIndianMobileNumber(data.mobileNumber)
+        && isString(data.pinHash, 1, 128)
+        && isTimestampField(data.createdAt);
+    }
+
+    // 2. Customer Subcollection: users/{userId}/customers/{customerId}
+    function isValidCustomer(data) {
+      return data.keys().hasAll(['id', 'name', 'mobile', 'address', 'currentOutstanding', 'createdAt', 'updatedAt', 'isDeleted'])
+        && data.id is string && data.id.size() > 0 && data.id.size() <= 100
+        && isString(data.name, 1, 150)
+        && isIndianMobileNumber(data.mobile)
+        && isString(data.address, 0, 500)
+        && isNumber(data.currentOutstanding)
+        && isTimestampField(data.createdAt)
+        && isTimestampField(data.updatedAt)
+        && data.isDeleted is bool
+        && isOptionalTimestamp(data, 'deletedAt')
+        && isOptionalString(data, 'businessName', 0, 150)
+        && isOptionalString(data, 'whatsappNumber', 0, 20)
+        && isOptionalString(data, 'email', 0, 100)
+        && isOptionalString(data, 'notes', 0, 1000)
+        && isOptionalString(data, 'gstNumber', 0, 20)
+        && isOptionalString(data, 'stateName', 0, 100)
+        && isOptionalString(data, 'stateCode', 0, 10)
+        && (!( 'productPrices' in data ) || data.productPrices == null || data.productPrices is map);
+    }
+
+    // 3. Product Subcollection: users/{userId}/products/{productId}
+    function isValidProduct(data) {
+      return data.keys().hasAll(['id', 'name', 'cgst', 'sgst', 'igst', 'currentStock', 'minimumStock', 'isActive', 'createdAt', 'updatedAt', 'isDeleted'])
+        && data.id is string && data.id.size() > 0 && data.id.size() <= 100
+        && isString(data.name, 1, 200)
+        && isPositiveOrZeroNumber(data.cgst)
+        && isPositiveOrZeroNumber(data.sgst)
+        && isPositiveOrZeroNumber(data.igst)
+        && isPositiveOrZeroNumber(data.currentStock)
+        && isPositiveOrZeroNumber(data.minimumStock)
+        && data.isActive is bool
+        && isTimestampField(data.createdAt)
+        && isTimestampField(data.updatedAt)
+        && data.isDeleted is bool
+        && isOptionalTimestamp(data, 'deletedAt')
+        && isOptionalString(data, 'hsnCode', 0, 50);
+    }
+
+    // 4. Order Subcollection: users/{userId}/orders/{orderId}
+    function isValidOrder(data) {
+      return data.keys().hasAll(['id', 'customerId', 'orderNumber', 'orderDate', 'status', 'items', 'subtotal', 'gst', 'total', 'createdAt', 'updatedAt', 'isDeleted'])
+        && data.id is string && data.id.size() > 0 && data.id.size() <= 100
+        && data.customerId is string && data.customerId.size() > 0 && data.customerId.size() <= 100
+        && isString(data.orderNumber, 1, 100)
+        && isTimestampField(data.orderDate)
+        && isString(data.status, 1, 50)
+        && data.items is list
+        && isPositiveOrZeroNumber(data.subtotal)
+        && isPositiveOrZeroNumber(data.gst)
+        && isPositiveOrZeroNumber(data.total)
+        && isTimestampField(data.createdAt)
+        && isTimestampField(data.updatedAt)
+        && data.isDeleted is bool
+        && isOptionalTimestamp(data, 'deletedAt')
+        && isOptionalString(data, 'notes', 0, 1000);
+    }
+
+    // 5. Invoice Subcollection: users/{userId}/invoices/{invoiceId}
+    function isValidInvoice(data) {
+      return data.keys().hasAll(['id', 'customerId', 'orderId', 'invoiceNumber', 'invoiceDate', 'items', 'subtotal', 'gst', 'total', 'status', 'isDelivered', 'createdAt', 'updatedAt', 'isDeleted'])
+        && data.id is string && data.id.size() > 0 && data.id.size() <= 100
+        && data.customerId is string && data.customerId.size() > 0 && data.customerId.size() <= 100
+        && data.orderId is string && data.orderId.size() <= 100
+        && isString(data.invoiceNumber, 1, 100)
+        && isTimestampField(data.invoiceDate)
+        && data.items is list
+        && isPositiveOrZeroNumber(data.subtotal)
+        && isPositiveOrZeroNumber(data.gst)
+        && isPositiveOrZeroNumber(data.total)
+        && isString(data.status, 1, 50)
+        && data.isDelivered is bool
+        && isTimestampField(data.createdAt)
+        && isTimestampField(data.updatedAt)
+        && data.isDeleted is bool
+        && isOptionalTimestamp(data, 'deliveryDate')
+        && isOptionalTimestamp(data, 'deletedAt')
+        && isOptionalString(data, 'notes', 0, 1000)
+        && isOptionalString(data, 'paymentTerms', 0, 200)
+        && isOptionalString(data, 'buyerOrderNo', 0, 100)
+        && isOptionalTimestamp(data, 'buyerOrderDate')
+        && isOptionalString(data, 'destination', 0, 200)
+        && isOptionalString(data, 'termsOfDelivery', 0, 500)
+        && isOptionalString(data, 'referenceNoAndDate', 0, 200);
+    }
+
+    // 6. Payment Subcollection: users/{userId}/payments/{paymentId}
+    function isValidPayment(data) {
+      return data.keys().hasAll(['id', 'invoiceId', 'customerId', 'amount', 'paymentDate', 'paymentMethod', 'createdAt', 'updatedAt', 'isDeleted'])
+        && data.id is string && data.id.size() > 0 && data.id.size() <= 100
+        && data.invoiceId is string && data.invoiceId.size() <= 100
+        && data.customerId is string && data.customerId.size() > 0 && data.customerId.size() <= 100
+        && isPositiveOrZeroNumber(data.amount)
+        && isTimestampField(data.paymentDate)
+        && isString(data.paymentMethod, 1, 50)
+        && isTimestampField(data.createdAt)
+        && isTimestampField(data.updatedAt)
+        && data.isDeleted is bool
+        && isOptionalTimestamp(data, 'deletedAt')
+        && isOptionalString(data, 'notes', 0, 1000);
+    }
+
+    // 7. Inventory Transaction Subcollection: users/{userId}/inventory_transactions/{txId}
+    function isValidInventoryTransaction(data) {
+      return data.keys().hasAll(['id', 'productId', 'type', 'quantity', 'previousStock', 'newStock', 'createdAt', 'updatedAt', 'isDeleted'])
+        && data.id is string && data.id.size() > 0 && data.id.size() <= 100
+        && data.productId is string && data.productId.size() > 0 && data.productId.size() <= 100
+        && isString(data.type, 1, 50)
+        && isPositiveOrZeroNumber(data.quantity)
+        && isPositiveOrZeroNumber(data.previousStock)
+        && isPositiveOrZeroNumber(data.newStock)
+        && isTimestampField(data.createdAt)
+        && isTimestampField(data.updatedAt)
+        && data.isDeleted is bool
+        && isOptionalTimestamp(data, 'deletedAt')
+        && isOptionalString(data, 'remarks', 0, 500);
+    }
+
+    // 8. Settings Subcollection: users/{userId}/settings/{settingId}
+    function isValidSettings(data) {
+      return data.keys().hasAll(['id', 'pinEnabled', 'invoicePrefix', 'invoiceNextNumber', 'createdAt', 'updatedAt', 'isDeleted'])
+        && data.id is string && data.id.size() > 0 && data.id.size() <= 100
+        && data.pinEnabled is bool
+        && isString(data.invoicePrefix, 1, 50)
+        && data.invoiceNextNumber is int && data.invoiceNextNumber >= 0
+        && isTimestampField(data.createdAt)
+        && isTimestampField(data.updatedAt)
+        && data.isDeleted is bool
+        && isOptionalTimestamp(data, 'deletedAt')
+        && isOptionalString(data, 'pin', 0, 128)
+        && isOptionalString(data, 'digitalSignature', 0, 50000);
+    }
+
+    // 9. Business Profile Subcollection: users/{userId}/business/{businessId}
+    function isValidBusiness(data) {
+      return data.keys().hasAll(['id', 'businessName', 'address', 'phone', 'invoicePrefix', 'invoiceStartNumber', 'createdAt', 'updatedAt', 'isDeleted'])
+        && data.id is string && data.id.size() > 0 && data.id.size() <= 100
+        && isString(data.businessName, 1, 200)
+        && isString(data.address, 1, 500)
+        && isString(data.phone, 1, 30)
+        && isString(data.invoicePrefix, 0, 50)
+        && data.invoiceStartNumber is int && data.invoiceStartNumber >= 0
+        && isTimestampField(data.createdAt)
+        && isTimestampField(data.updatedAt)
+        && data.isDeleted is bool
+        && isOptionalTimestamp(data, 'deletedAt')
+        && isOptionalString(data, 'gstNumber', 0, 30)
+        && isOptionalString(data, 'fssaiNumber', 0, 30)
+        && isOptionalString(data, 'email', 0, 100)
+        && isOptionalString(data, 'panNumber', 0, 30)
+        && isOptionalString(data, 'msmeNumber', 0, 50)
+        && isOptionalString(data, 'arnNumber', 0, 50)
+        && isOptionalString(data, 'jurisdictionCity', 0, 100)
+        && isOptionalString(data, 'logoUrl', 0, 2000)
+        && isOptionalString(data, 'signatureUrl', 0, 2000)
+        && isOptionalString(data, 'bankName', 0, 100)
+        && isOptionalString(data, 'bankAccount', 0, 50)
+        && isOptionalString(data, 'bankIfsc', 0, 30)
+        && isOptionalString(data, 'upiId', 0, 100)
+        && isOptionalString(data, 'paymentQrUrl', 0, 2000)
+        && isOptionalString(data, 'termsAndConditions', 0, 5000);
+    }
+
+    // 10. Notification Subcollection: users/{userId}/notifications/{notificationId}
+    function isValidNotification(data) {
+      return data.keys().hasAll(['id', 'title', 'message', 'isRead', 'createdAt', 'updatedAt', 'isDeleted'])
+        && data.id is string && data.id.size() > 0 && data.id.size() <= 100
+        && isString(data.title, 1, 200)
+        && isString(data.message, 1, 2000)
+        && data.isRead is bool
+        && isTimestampField(data.createdAt)
+        && isTimestampField(data.updatedAt)
+        && data.isDeleted is bool
+        && isOptionalTimestamp(data, 'deletedAt');
+    }
+
+    // 11. Audit Log Subcollection: users/{userId}/audit_logs/{logId}
+    function isValidAuditLog(data) {
+      return data.keys().hasAll(['id', 'module', 'action', 'recordId', 'description', 'timestamp', 'createdAt', 'updatedAt', 'isDeleted'])
+        && data.id is string && data.id.size() > 0 && data.id.size() <= 100
+        && isString(data.module, 1, 100)
+        && isString(data.action, 1, 100)
+        && isString(data.recordId, 0, 100)
+        && isString(data.description, 1, 2000)
+        && isTimestampField(data.timestamp)
+        && isTimestampField(data.createdAt)
+        && isTimestampField(data.updatedAt)
+        && data.isDeleted is bool
+        && isOptionalTimestamp(data, 'deletedAt');
+    }
+
+    // =========================================================================
+    // MATCH RULES
+    // =========================================================================
+
+    // Root user profile collection
+    match /users/{userId} {
       allow read: if true;
-      allow create: if true 
-                    && hasRequiredFields(['id', 'name', 'mobile', 'address', 'currentOutstanding', 'createdAt', 'updatedAt', 'isDeleted']);
-      allow update: if true;
-      allow delete: if false; // Only allow soft deletes via update
-    }
+      allow create: if isValidUser(request.resource.data) && request.resource.data.id == userId;
+      allow update: if isValidUser(request.resource.data)
+                    && request.resource.data.id == resource.data.id
+                    && request.resource.data.createdAt == resource.data.createdAt;
+      allow delete: if true; // Allowed for account deletion flow
 
-    match /products/{productId} {
-      allow read: if true;
-      allow create: if true 
-                    && hasRequiredFields(['id', 'name', 'gstRate', 'sellingPrice', 'currentStock', 'minimumStock', 'isActive', 'createdAt', 'updatedAt', 'isDeleted']);
-      allow update: if true;
-      allow delete: if false; 
-    }
+      // 1. Customers subcollection
+      match /customers/{customerId} {
+        allow read: if true;
+        allow create: if isValidCustomer(request.resource.data)
+                      && request.resource.data.id == customerId;
+        allow update: if isSoftDeleteUpdate()
+                      || (isValidCustomer(request.resource.data)
+                          && request.resource.data.id == resource.data.id
+                          && request.resource.data.createdAt == resource.data.createdAt);
+        allow delete: if true; // Allowed for batch account deletion
+      }
 
-    match /orders/{orderId} {
-      allow read: if true;
-      allow create: if true;
-      allow update: if true;
-      allow delete: if false;
-    }
+      // 2. Products subcollection
+      match /products/{productId} {
+        allow read: if true;
+        allow create: if isValidProduct(request.resource.data)
+                      && request.resource.data.id == productId;
+        allow update: if isSoftDeleteUpdate()
+                      || (request.resource.data.diff(resource.data).affectedKeys().hasOnly(['currentStock', 'updatedAt'])
+                          && isPositiveOrZeroNumber(request.resource.data.currentStock)
+                          && isTimestampField(request.resource.data.updatedAt))
+                      || (isValidProduct(request.resource.data)
+                          && request.resource.data.id == resource.data.id
+                          && request.resource.data.createdAt == resource.data.createdAt);
+        allow delete: if true; // Allowed for batch account deletion
+      }
 
-    match /invoices/{invoiceId} {
-      allow read: if true;
-      allow create: if true;
-      allow update: if true;
-      allow delete: if false;
-    }
+      // 3. Orders subcollection
+      match /orders/{orderId} {
+        allow read: if true;
+        allow create: if isValidOrder(request.resource.data)
+                      && request.resource.data.id == orderId;
+        allow update: if isSoftDeleteUpdate()
+                      || (isValidOrder(request.resource.data)
+                          && request.resource.data.id == resource.data.id
+                          && request.resource.data.createdAt == resource.data.createdAt);
+        allow delete: if true; // Allowed for batch account deletion
+      }
 
-    match /payments/{paymentId} {
-      allow read: if true;
-      allow create: if true;
-      allow update: if true;
-      allow delete: if false;
-    }
+      // 4. Invoices subcollection
+      match /invoices/{invoiceId} {
+        allow read: if true;
+        allow create: if isValidInvoice(request.resource.data)
+                      && request.resource.data.id == invoiceId;
+        allow update: if isSoftDeleteUpdate()
+                      || (isValidInvoice(request.resource.data)
+                          && request.resource.data.id == resource.data.id
+                          && request.resource.data.createdAt == resource.data.createdAt);
+        allow delete: if true; // Allowed for batch account deletion
+      }
 
-    match /inventory_transactions/{transactionId} {
-      allow read: if true;
-      allow create: if true;
-      allow update: if true;
-      allow delete: if false;
-    }
+      // 5. Payments subcollection
+      match /payments/{paymentId} {
+        allow read: if true;
+        allow create: if isValidPayment(request.resource.data)
+                      && request.resource.data.id == paymentId;
+        allow update: if isSoftDeleteUpdate()
+                      || (isValidPayment(request.resource.data)
+                          && request.resource.data.id == resource.data.id
+                          && request.resource.data.createdAt == resource.data.createdAt);
+        allow delete: if true; // Allowed for batch account deletion
+      }
 
-    match /settings/{settingId} {
-      allow read, write: if true;
-    }
+      // 6. Inventory Transactions subcollection
+      match /inventory_transactions/{txId} {
+        allow read: if true;
+        allow create: if isValidInventoryTransaction(request.resource.data)
+                      && request.resource.data.id == txId;
+        allow update: if isSoftDeleteUpdate()
+                      || (isValidInventoryTransaction(request.resource.data)
+                          && request.resource.data.id == resource.data.id
+                          && request.resource.data.createdAt == resource.data.createdAt);
+        allow delete: if true; // Allowed for batch account deletion
+      }
 
-    match /business/{businessId} {
-      allow read, write: if true;
-    }
+      // 7. Settings subcollection
+      match /settings/{settingId} {
+        allow read: if true;
+        allow create: if isValidSettings(request.resource.data)
+                      && request.resource.data.id == settingId;
+        allow update: if isSoftDeleteUpdate()
+                      || (isValidSettings(request.resource.data)
+                          && request.resource.data.id == resource.data.id
+                          && request.resource.data.createdAt == resource.data.createdAt);
+        allow delete: if true; // Allowed for batch account deletion
+      }
 
-    match /notifications/{notificationId} {
-      allow read, write: if true;
-    }
+      // 8. Business Profile subcollection
+      match /business/{businessId} {
+        allow read: if true;
+        allow create: if isValidBusiness(request.resource.data)
+                      && request.resource.data.id == businessId;
+        allow update: if isSoftDeleteUpdate()
+                      || (isValidBusiness(request.resource.data)
+                          && request.resource.data.id == resource.data.id
+                          && request.resource.data.createdAt == resource.data.createdAt);
+        allow delete: if true; // Allowed for batch account deletion
+      }
 
-    match /audit_logs/{logId} {
-      allow read, write: if true;
-    }
+      // 9. Notifications subcollection
+      match /notifications/{notificationId} {
+        allow read: if true;
+        allow create: if isValidNotification(request.resource.data)
+                      && request.resource.data.id == notificationId;
+        allow update: if isSoftDeleteUpdate()
+                      || (request.resource.data.diff(resource.data).affectedKeys().hasOnly(['isRead', 'updatedAt'])
+                          && request.resource.data.isRead is bool
+                          && isTimestampField(request.resource.data.updatedAt))
+                      || (isValidNotification(request.resource.data)
+                          && request.resource.data.id == resource.data.id
+                          && request.resource.data.createdAt == resource.data.createdAt);
+        allow delete: if true; // Allowed for batch account deletion
+      }
 
-    match /{document=**} {
-      allow read, write: if true;
+      // 10. Audit Logs subcollection
+      match /audit_logs/{logId} {
+        allow read: if true;
+        allow create: if isValidAuditLog(request.resource.data)
+                      && request.resource.data.id == logId;
+        allow update: if isSoftDeleteUpdate()
+                      || (isValidAuditLog(request.resource.data)
+                          && request.resource.data.id == resource.data.id
+                          && request.resource.data.createdAt == resource.data.createdAt);
+        allow delete: if true; // Allowed for batch account deletion
+      }
     }
   }
 }
