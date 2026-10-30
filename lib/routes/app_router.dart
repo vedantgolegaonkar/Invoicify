@@ -14,9 +14,6 @@ import '../features/customers/presentation/screens/customer_details_screen.dart'
 import '../features/products/presentation/screens/product_list_screen.dart';
 import '../features/products/presentation/screens/add_edit_product_screen.dart';
 import '../features/products/presentation/screens/product_details_screen.dart';
-import '../features/orders/presentation/screens/order_list_screen.dart';
-import '../features/orders/presentation/screens/create_edit_order_screen.dart';
-import '../features/orders/presentation/screens/order_details_screen.dart';
 import '../features/invoices/presentation/screens/invoice_list_screen.dart';
 import '../features/invoices/presentation/screens/create_invoice_screen.dart';
 import '../features/invoices/presentation/screens/invoice_details_screen.dart';

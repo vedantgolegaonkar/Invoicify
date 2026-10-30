@@ -42,41 +42,53 @@ class _SplashScreenState extends ConsumerState<SplashScreen> with SingleTickerPr
   }
 
   Future<void> _initSplash() async {
-    // Request permissions first and wait for the dialog to close
-    await NotificationService().requestPermissions();
-    if (!mounted) return;
-    
-    // Play animation
+    // Play animation immediately
     _animationController.forward();
+    
+    // Request permissions non-blocking so it never hangs the splash screen
+    NotificationService().requestPermissions().catchError((_) => false);
     
     // Check auth in background
     _checkAuth();
   }
 
   Future<void> _checkAuth() async {
-    await Future.delayed(const Duration(milliseconds: 2000));
+    await Future.delayed(const Duration(milliseconds: 1500));
     if (!mounted) return;
-    final repository = ref.read(authRepositoryProvider);
-    final userId = await repository.getCurrentUserId();
     
-    if (userId != null) {
-      try {
-        final user = await repository.getUser(userId);
-        if (mounted) {
-          if (user != null) {
+    try {
+      final repository = ref.read(authRepositoryProvider);
+      final userId = await repository.getCurrentUserId().timeout(
+        const Duration(seconds: 4),
+        onTimeout: () => null,
+      );
+      
+      if (userId != null) {
+        try {
+          final user = await repository.getUser(userId).timeout(
+            const Duration(seconds: 4),
+            onTimeout: () => null,
+          );
+          if (mounted) {
+            if (user != null) {
+              context.go('/pin');
+            } else {
+              await repository.clearCurrentUser();
+              if (mounted) context.go('/login');
+            }
+          }
+        } catch (e) {
+          // Fallback to pin screen if offline or network error
+          if (mounted) {
             context.go('/pin');
-          } else {
-            await repository.clearCurrentUser();
-            if (mounted) context.go('/login');
           }
         }
-      } catch (e) {
-        // Fallback to pin screen if offline or network error
+      } else {
         if (mounted) {
-          context.go('/pin');
+          context.go('/login');
         }
       }
-    } else {
+    } catch (_) {
       if (mounted) {
         context.go('/login');
       }
