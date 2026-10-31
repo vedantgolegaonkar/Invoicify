@@ -4,7 +4,13 @@ import '../data/customer_repository.dart';
 import '../../invoices/providers/invoice_providers.dart';
 import '../../payments/providers/payment_providers.dart';
 
+import '../../authentication/presentation/providers/auth_provider.dart';
+
 final customersStreamProvider = StreamProvider<List<CustomerModel>>((ref) {
+  final userId = ref.watch(authUserIdProvider);
+  if (userId == null || userId == 'unauthenticated') {
+    return const Stream.empty();
+  }
   final repository = ref.watch(customerRepositoryProvider);
   return repository.streamAll();
 });

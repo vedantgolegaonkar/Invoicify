@@ -2,7 +2,13 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../data/settings_repository.dart';
 import '../domain/settings_model.dart';
 
+import '../../authentication/presentation/providers/auth_provider.dart';
+
 final settingsStreamProvider = StreamProvider<SettingsModel?>((ref) {
+  final userId = ref.watch(authUserIdProvider);
+  if (userId == null || userId == 'unauthenticated') {
+    return const Stream.empty();
+  }
   final repository = ref.watch(settingsRepositoryProvider);
   
   return repository.streamAll().map((settingsList) {
