@@ -24,6 +24,7 @@ class UserModel {
 
   Map<String, dynamic> toMap() {
     return {
+      'id': id,
       'mobileNumber': mobileNumber,
       'pinHash': pinHash,
       'createdAt': Timestamp.fromDate(createdAt),

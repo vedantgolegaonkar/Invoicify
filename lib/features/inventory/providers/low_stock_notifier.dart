@@ -2,9 +2,16 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../products/providers/product_providers.dart';
 import '../../../services/notification_service.dart';
 
+import '../../authentication/presentation/providers/auth_provider.dart';
+
 // We just need this provider to stay alive and listen to the stream,
-// so we'll make it a Provider that watches the productsStreamProvider.
+// so we'll make it a Provider that watches the productsStreamProvider when authenticated.
 final lowStockNotifierProvider = Provider<void>((ref) {
+  final userId = ref.watch(authUserIdProvider);
+  if (userId == null || userId == 'unauthenticated') {
+    return;
+  }
+  
   final productsAsync = ref.watch(productsStreamProvider);
   
   // Maintain state of which products we've already alerted about
